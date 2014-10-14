@@ -1,0 +1,20 @@
+%%%-------------------------------------------------------------------
+%%% @author evangelosp
+%%% @copyright (C) 2014, evalonlabs
+%%% @doc
+%%%
+%%% @end
+%%%-------------------------------------------------------------------
+{application, rest_store,
+  [
+    {description, "REST Interface for backend services"},
+    {vsn, "0.0.1"},
+    {registered, [rest_store_sup]},
+    {applications, [
+      kernel,
+      stdlib,
+      cowboy
+    ]},
+    {mod, {rest_store_app, []}},
+    {env, []}
+  ]}.
