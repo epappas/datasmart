@@ -53,7 +53,11 @@ init([]) ->
 %%% Routing
 %% ===================================================================
 routing_dispatch() ->
-  List = [root, index_key, user, user_key, files, files_key],
+  List = [
+    root, index_key,
+    user, user_apiKey, user_srp_begin, user_srp_answer, user_srp_verify, user_oukey, user_oukey_apiKey,
+    files, files_key
+  ],
   cowboy_router:compile([
     %% {URIHost, list({URIPath, Handler, Opts})}
     {'_', [route(Name) || Name <- List]}
@@ -66,10 +70,25 @@ route(index_key) ->
   {"/index/:key", index_handler, []};
 
 route(user) ->
-  {"/user", user_handler, []};
+  {"/user", rest_uregister_handler, []};
 
-route(user_key) ->
-  {"/user/:key", user_handler, []};
+route(user_apiKey) ->
+  {"/user/apiKey", rest_oapikey_handler, []};
+
+route(user_srp_begin) ->
+  {"/user/srp/begin", rest_srpbegin_handler, []};
+
+route(user_srp_answer) ->
+  {"/user/srp/answer", rest_srpanswer_handler, []};
+
+route(user_srp_verify) ->
+  {"/user/srp/verify", rest_srpverify_handler, []};
+
+route(user_oukey) ->
+  {"/user/:oukey", rest_ouserkey_handler, []};
+
+route(user_oukey_apiKey) ->
+  {"/user/:oukey/apiKey", rest_oapikey_handler, []};
 
 route(files) ->
   {"/user/:key/files", files_handler, []};
