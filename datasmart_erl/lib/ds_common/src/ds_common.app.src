@@ -9,7 +9,7 @@
   [
     {description, "Common utils"},
     {vsn, "0.0.1"},
-    {registered, [qredis, hash_md5, ds_util]},
+    {registered, [qredis, hash_md5, ds_util, dcmd]},
     {applications, [
       kernel,
       stdlib
