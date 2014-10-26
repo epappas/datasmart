@@ -27,8 +27,8 @@ run(Cmd, Timeout, Opt) ->
 loop(Port, Data, Timeout) ->
   receive
     {Port, {data, NewData}} -> loop(Port, lists:concat([Data, NewData]), Timeout);
-    {Port, {exit_status, 0}} -> Data;
-    {Port, {exit_status, S}} -> throw({commandfailed, S})
+    {Port, {exit_status, 0}} -> {ok, Data};
+    {Port, {exit_status, S}} -> {error, S}
   after Timeout ->
     throw(timeout)
   end.
