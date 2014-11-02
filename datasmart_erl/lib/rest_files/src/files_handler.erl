@@ -126,6 +126,7 @@ multipart(UKey, Req, FieldList, FileList) ->
               [
                 %% {<<"_id">>, Id},
                 %% {<<"_rev">>, Rev1},
+                {<<"ukey">>, UKey},
                 {<<"fileKey">>, list_to_binary(FileKey)},
                 {<<"fieldName">>, FieldName},
                 {<<"filename">>, Filename},
