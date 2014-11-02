@@ -91,9 +91,9 @@ route(user_oukey_apiKey) ->
   {"/user/:oukey/apiKey", rest_oapikey_handler, []};
 
 route(files) ->
-  {"/user/:key/files", files_handler, []};
+  {"/user/:oukey/files", files_handler, []};
 
 route(files_key) ->
-  {"/user/:key/files/:filekey", files_handler, []}.
+  {"/user/:oukey/files/:filekey", files_handler, []}.
 
 
