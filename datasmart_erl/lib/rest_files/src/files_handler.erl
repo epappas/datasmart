@@ -92,11 +92,16 @@ multipart(UKey, Req, FieldList, FileList) ->
             {ok, Req3, FieldList1, FileList};
           {file, FieldName, Filename, CType, CTransferEncoding} ->
 
+            AESKey = crypto:strong_rand_bytes(32), %% 256 bts long
+            AESIV = crypto:strong_rand_bytes(16),
             FileKey = lists:concat([
               binary_to_list(UKey),
               "_",
               hash_md5:build(binary_to_list(Filename))
             ]),
+            FileKeyBin = list_to_binary(FileKey),
+
+            CryptoState = crypto:stream_init(aes_ctr, AESKey, AESIV),
 
             Opts =
               case couch:get("user_uploads", FileKey) of
@@ -112,7 +117,7 @@ multipart(UKey, Req, FieldList, FileList) ->
             {ok, UploadRef} = couch:attach("user_uploads", FileKey, {Filename, stream}, Opts),
 
             %% commit upload
-            {ok, {ResultList}, Req3} = stream_file(Req2, UploadRef),
+            {ok, {ResultList}, Req3, _} = stream_file(Req2, UploadRef, CryptoState),
 
             Rev1 = proplists:get_value(<<"rev">>, ResultList),
             Id = proplists:get_value(<<"id">>, ResultList),
@@ -124,10 +129,8 @@ multipart(UKey, Req, FieldList, FileList) ->
             Doc = {lists:concat([
               DocKVList,
               [
-                %% {<<"_id">>, Id},
-                %% {<<"_rev">>, Rev1},
                 {<<"ukey">>, UKey},
-                {<<"fileKey">>, list_to_binary(FileKey)},
+                {<<"fileKey">>, FileKeyBin},
                 {<<"fieldName">>, FieldName},
                 {<<"filename">>, Filename},
                 {<<"ctype">>, CType},
@@ -136,6 +139,23 @@ multipart(UKey, Req, FieldList, FileList) ->
             ])},
 
             {ok, ResultDoc} = couch:save("user_uploads", Doc),
+
+            case couch:get("user_uploads_essentials", FileKey) of
+              {ok, {EssKVList}} ->
+                Ref = proplists:get_value(<<"_id">>, EssKVList),
+                Rev2 = proplists:get_value(<<"_rev">>, EssKVList),
+                couch:save("user_uploads_essentials",
+                  {[{<<"aes_key">>, base64:encode(AESKey)},
+                    {<<"aes_iv">>, base64:encode(AESIV)},
+                    {<<"fileKey">>, FileKeyBin}]},
+                  [{<<"_id">>, Ref}, {<<"_rev">>, Rev2}]);
+              _ ->
+                couch:save("user_uploads_essentials",
+                  {[{<<"_id">>, FileKeyBin},
+                    {<<"aes_key">>, base64:encode(AESKey)},
+                    {<<"aes_iv">>, base64:encode(AESIV)},
+                    {<<"fileKey">>, FileKeyBin}]})
+            end,
 
             FileList1 = lists:append([{Filename, ResultDoc}], FileList),
 
@@ -146,13 +166,15 @@ multipart(UKey, Req, FieldList, FileList) ->
       {ok, Req2, FieldList, FileList}
   end.
 
-stream_file(Req, UploadRef) ->
+stream_file(Req, UploadRef, CryptoState) ->
   case cowboy_req:part_body(Req) of
     {ok, Body, Req2} ->
-      ok = couch:stream_attach(UploadRef, Body),
+      {NewCryptoState, CipherBody} = crypto:stream_encrypt(CryptoState, Body),
+      ok = couch:stream_attach(UploadRef, CipherBody),
       {ok, Result} = couch:stream_attach_done(UploadRef),
-      {ok, Result, Req2};
+      {ok, Result, Req2, NewCryptoState};
     {more, Body, Req2} ->
-      ok = couch:stream_attach(UploadRef, Body),
-      stream_file(Req2, UploadRef)
+      {NewCryptoState, CipherBody} = crypto:stream_encrypt(CryptoState, Body),
+      ok = couch:stream_attach(UploadRef, CipherBody),
+      stream_file(Req2, UploadRef, NewCryptoState)
   end.
