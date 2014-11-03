@@ -15,6 +15,7 @@
   server_info/0,
   create_db/1,
   save/2,
+  save/3,
   get/2,
   get/3,
   all/1,
@@ -24,7 +25,9 @@
   stream/3,
   attach/4,
   fetch_attachment/3,
-  drop_attachment/3]).
+  drop_attachment/3,
+  stream_attach/2,
+  stream_attach_done/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -59,6 +62,14 @@ create_db(DBName) -> gen_server:call(?MODULE, {create_db, DBName}).
 
 -spec(save(DBName :: term(), Doc :: term()) -> {ok, Doc :: term()}).
 save(DBName, Doc) -> gen_server:call(?MODULE, {save_doc, DBName, Doc}).
+
+save(DBName, Doc, RefRev) ->
+  {DocKVList} = Doc,
+  gen_server:call(?MODULE, {
+    save_doc, DBName, {lists:concat([
+      RefRev,
+      DocKVList
+    ])}}).
 
 -spec(get(DBName :: term(), Ref :: term()) -> {ok, Doc :: term()}).
 get(DBName, Ref) -> gen_server:call(?MODULE, {get_doc, DBName, Ref, []}).
@@ -96,6 +107,12 @@ stream(DBName, {DesignName, ViewName}, {Pid, ViewFun}) ->
     Opts :: term()) -> {ok, Result :: term()}).
 attach(DBName, Ref, {Name, Attachment}, Opts) ->
   gen_server:call(?MODULE, {attach_doc, DBName, Ref, {Name, Attachment}, Opts}).
+
+stream_attach(Ref, Msg) ->
+  gen_server:call(?MODULE, {stream_attach, Ref, Msg}).
+
+stream_attach_done(Ref) ->
+  gen_server:call(?MODULE, {stream_attach, Ref, eof}).
 
 -spec(fetch_attachment(DBName :: term(), Ref :: term(), Name :: term()) ->
   {ok, Attachment :: term()}).
@@ -223,6 +240,19 @@ handle_call({attach_doc, DBName, Ref, {Name, Attachment}, Options}, _From, State
   case couchbeam:put_attachment(DB, Ref, Name, Attachment, Options) of
     {ok, Result} -> {reply, {ok, Result}, State2};
     Error -> {reply, {error, Error}, State2}
+  end;
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Set an Attachment to a Doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+handle_call({stream_attach, Ref, Msg}, _From, State) ->
+  case couchbeam:send_attachment(Ref, Msg) of
+    {error, Error} -> {reply, {error, Error}, State};
+    Result -> {reply, Result, State}
   end;
 
 %%--------------------------------------------------------------------
