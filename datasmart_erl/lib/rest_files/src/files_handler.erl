@@ -21,9 +21,63 @@ handle(Req, State) ->
   {ok, Req, State}.
 
 process(<<"GET">>, Req) ->
-  case handle_query({file_info, "OUkey", "FileKey"}, Req) of
-    {info, FileInfo, Req1} -> echo(200, jiffy:encode({FileInfo}), Req1);
-    _ -> end_with_failure(404, "Resource not found", Req)
+  {OUkeyBin, _} = cowboy_req:binding(oukey, Req),
+  {FileKeyBin, _} = cowboy_req:binding(filekey, Req),
+  {Attachment, _} = cowboy_req:qs_val(<<"attachment">>, Req, false),
+
+  case {OUkeyBin, FileKeyBin} of
+    {undefined, undefined} -> end_with_failure(400, "No Valid Arguments", Req);
+    {undefined, _} -> end_with_failure(400, "No Valid Arguments", Req);
+    {_, undefined} -> end_with_failure(400, "No Valid Arguments", Req);
+    {OUkeyBin, FileKeyBin} ->
+      OUkey = binary:bin_to_list(OUkeyBin),
+      FileKey = binary:bin_to_list(FileKeyBin),
+
+      case couch:get("user_uploads_essentials", FileKey) of
+        {error, _Error} -> {error, "Uknown Key"};
+        {ok, EssentialsJson} ->
+          {EKVList} = EssentialsJson,
+
+          case user_server:match_ouKey(OUkey) of
+            {ok, _Ukey} ->
+
+              AESKey64 = proplists:get_value(<<"aes_key">>, EKVList),
+              AESIV64 = proplists:get_value(<<"aes_iv">>, EKVList),
+              AESKey = base64:decode(AESKey64),
+              AESIV = base64:decode(AESIV64),
+
+              case couch:get("user_uploads", FileKey) of
+                {ok, FileJson} ->
+                  {FileKVList} = FileJson,
+
+                  case Attachment of
+                    false -> echo(200, jiffy:encode({FileKVList}), Req);
+                    _ -> %% TODO Support stremming mode
+                      CType = proplists:get_value(<<"ctype">>, FileKVList),
+                      FileName = proplists:get_value(<<"filename">>, FileKVList),
+
+                      case couch:fetch_attachment("user_uploads", FileKey, FileName) of
+                        {ok, EncrResult} ->
+
+                          State = crypto:stream_init(aes_ctr, AESKey, AESIV),
+                          {_, Result} = crypto:stream_decrypt(State, EncrResult),
+
+                          cowboy_req:reply(200, [
+                            {<<"content-type">>, CType},
+                            {<<"server">>, <<"myinbox-datastore">>}
+                          ], Result, Req);
+
+                        _ -> end_with_failure(404, "Not Found", Req)
+                      end
+                  end;
+
+                _ -> end_with_failure(400, "No Valid Arguments", Req)
+              end;
+
+            _ -> end_with_failure(400, "No Valid Arguments", Req)
+          end;
+        _ -> {error, "Uknown Key"}
+      end
   end;
 
 process(<<"POST">>, Req) ->
@@ -33,7 +87,7 @@ process(<<"POST">>, Req) ->
     undefined -> end_with_failure(400, "No Valid Arguments", Req2);
     OUkeyBin ->
       OUkey = binary:bin_to_list(OUkeyBin),
-      {ok, Ukey} = user_server:match_ouKey(OUkey),
+
       case user_server:match_ouKey(OUkey) of
         {ok, Ukey} ->
           case cowboy_req:parse_header(<<"content-type">>, Req2) of
@@ -53,10 +107,6 @@ process(<<"POST">>, Req) ->
   end;
 
 process(_, Req) -> end_with_failure(405, "Method not allowed.", Req).
-
-handle_query({file_info, _OUkey, _FileKey}, Req) -> {info, [], Req};
-
-handle_query({file_upload, _OUkey}, Req) -> {info, [], Req}.
 
 echo(Status, Echo, Req) ->
   cowboy_req:reply(Status, [
