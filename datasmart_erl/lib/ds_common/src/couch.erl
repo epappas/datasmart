@@ -25,9 +25,11 @@
   stream/3,
   attach/4,
   fetch_attachment/3,
+  fetch_attachment_stream/3,
   drop_attachment/3,
   stream_attach/2,
-  stream_attach_done/1]).
+  stream_attach_done/1,
+  stream_attachment_fetch/1]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -114,11 +116,16 @@ stream_attach(Ref, Msg) ->
 stream_attach_done(Ref) ->
   gen_server:call(?MODULE, {stream_attach, Ref, eof}).
 
+stream_attachment_fetch(Ref) ->
+  gen_server:call(?MODULE, {stream_attachment, Ref}).
+
 -spec(fetch_attachment(DBName :: term(), Ref :: term(), Name :: term()) ->
   {ok, Attachment :: term()}).
 %% http://127.0.0.1:5984/randomface/6461aa999da007642fea644e7a01b68a/bigpreview_Curves.jpg
 %% couch:fetch_attachment("randomface", "6461aa999da007642fea644e7a01b68a", "bigpreview_Curves.jpg").
 fetch_attachment(DBName, Ref, Name) -> gen_server:call(?MODULE, {fetch_attachment, DBName, Ref, Name}).
+
+fetch_attachment_stream(DBName, Ref, Name) -> gen_server:call(?MODULE, {fetch_attachment_stream, DBName, Ref, Name}).
 
 -spec(drop_attachment(DBName :: term(), Ref :: term(), Name :: term()) -> ok).
 drop_attachment(DBName, Ref, Name) -> gen_server:cast(?MODULE, {drop_attachment, DBName, Ref, Name}),
@@ -245,7 +252,7 @@ handle_call({attach_doc, DBName, Ref, {Name, Attachment}, Options}, _From, State
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Set an Attachment to a Doc
+%% stream an Attachment
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -255,10 +262,17 @@ handle_call({stream_attach, Ref, Msg}, _From, State) ->
     Result -> {reply, Result, State}
   end;
 
+handle_call({stream_attachment, Ref}, _From, State) ->
+  case couchbeam:stream_attachment(Ref) of
+    {error, Error} -> {reply, {error, Error}, State};
+    done -> {reply, {ok, done}, State};
+    Result -> {reply, Result, State}
+  end;
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Set an Attachment to a Doc
+%% fetch an Attachment from a Doc
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -267,6 +281,20 @@ handle_call({fetch_attachment, DBName, Ref, Name}, _From, State) ->
 
   case couchbeam:fetch_attachment(DB, Ref, Name) of
     {ok, Result} -> {reply, {ok, Result}, State2};
+    Error -> {reply, {error, Error}, State2}
+  end;
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Stream an Attachment from a Doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+handle_call({fetch_attachment_stream, DBName, Ref, Name}, _From, State) ->
+  {ok, DB, State2} = db(State, DBName, []),
+
+  case couchbeam:fetch_attachment(DB, Ref, Name, [stream]) of
+    {ok, Ref1} -> {reply, {ok, Ref1}, State2};
     Error -> {reply, {error, Error}, State2}
   end.
 
@@ -357,9 +385,9 @@ code_change(_OldVsn, State, _Extra) ->
 
 db(State, DBName, Options) ->
   CurrentList = case is_list(State#state.dbList) of
-    false -> lists:flatten([State#state.dbList]);
-    true -> State#state.dbList
-  end,
+                  false -> lists:flatten([State#state.dbList]);
+                  true -> State#state.dbList
+                end,
   case lists:keyfind(DBName, 1, CurrentList) of
     {DBName, DB} -> {ok, DB, State};
     false ->
