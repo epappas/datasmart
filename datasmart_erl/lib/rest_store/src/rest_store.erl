@@ -13,6 +13,7 @@
 
 %% API.
 start() ->
+  lager:start(),
   application:start(crypto),
   application:start(asn1),
   application:start(public_key),
