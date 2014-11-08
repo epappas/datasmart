@@ -52,20 +52,24 @@ process(<<"GET">>, Req) ->
 
                   case Attachment of
                     false -> echo(200, jiffy:encode({FileKVList}), Req);
-                    _ -> %% TODO Support stremming mode
+                    _ ->
                       CType = proplists:get_value(<<"ctype">>, FileKVList),
                       FileName = proplists:get_value(<<"filename">>, FileKVList),
 
-                      case couch:fetch_attachment("user_uploads", FileKey, FileName) of
-                        {ok, EncrResult} ->
+                      case couch:fetch_attachment_stream("user_uploads", FileKey, FileName) of
+                        {ok, StreamRef} ->
 
-                          State = crypto:stream_init(aes_ctr, AESKey, AESIV),
-                          {_, Result} = crypto:stream_decrypt(State, EncrResult),
+                          EncrState = crypto:stream_init(aes_ctr, AESKey, AESIV),
+
+                          StreamFun = fun(SendChunk) ->
+                            stream_send_file(SendChunk, StreamRef, EncrState, Req)
+                          end,
+                          Req2 = cowboy_req:set_resp_body_fun(chunked, StreamFun, Req),
 
                           cowboy_req:reply(200, [
                             {<<"content-type">>, CType},
                             {<<"server">>, <<"myinbox-datastore">>}
-                          ], Result, Req);
+                          ], Req2);
 
                         _ -> end_with_failure(404, "Not Found", Req)
                       end
@@ -167,7 +171,7 @@ multipart(UKey, Req, FieldList, FileList) ->
             {ok, UploadRef} = couch:attach("user_uploads", FileKey, {Filename, stream}, Opts),
 
             %% commit upload
-            {ok, {ResultList}, Req3, _} = stream_file(Req2, UploadRef, CryptoState),
+            {ok, {ResultList}, Req3, _} = stream_receive_file(Req2, UploadRef, CryptoState),
 
             Rev1 = proplists:get_value(<<"rev">>, ResultList),
             Id = proplists:get_value(<<"id">>, ResultList),
@@ -216,7 +220,7 @@ multipart(UKey, Req, FieldList, FileList) ->
       {ok, Req2, FieldList, FileList}
   end.
 
-stream_file(Req, UploadRef, CryptoState) ->
+stream_receive_file(Req, UploadRef, CryptoState) ->
   case cowboy_req:part_body(Req) of
     {ok, Body, Req2} ->
       {NewCryptoState, CipherBody} = crypto:stream_encrypt(CryptoState, Body),
@@ -226,5 +230,19 @@ stream_file(Req, UploadRef, CryptoState) ->
     {more, Body, Req2} ->
       {NewCryptoState, CipherBody} = crypto:stream_encrypt(CryptoState, Body),
       ok = couch:stream_attach(UploadRef, CipherBody),
-      stream_file(Req2, UploadRef, NewCryptoState)
+      stream_receive_file(Req2, UploadRef, NewCryptoState)
+  end.
+
+stream_send_file(SendChunk, StreamRef, EncrState, Req) ->
+  case couchbeam:stream_attachment(StreamRef) of
+    {ok, EncrResult} ->
+      {NewEncrState, Result} = crypto:stream_decrypt(EncrState, EncrResult),
+
+      SendChunk(Result),
+
+      stream_send_file(SendChunk, StreamRef, NewEncrState, Req);
+    done -> {ok, Req};
+    {error, Err} ->
+      end_with_failure(500, "Transport issue", Req),
+      {error, Err}
   end.
