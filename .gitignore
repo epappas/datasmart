@@ -8,3 +8,9 @@ ebin
 rel/example_project
 .concrete/DEV_MODE
 .rebar
+*.iml
+*/node_modules/*
+.DS_Store
+.idea/
+.idea/*
+.log

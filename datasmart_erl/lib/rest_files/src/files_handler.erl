@@ -27,7 +27,7 @@ process(<<"GET">>, Req) ->
 
   case {OUkeyBin, FileKeyBin} of
     {undefined, undefined} -> end_with_failure(400, "No Valid Arguments", Req);
-    {undefined, _} -> end_with_failure(400, "No Valid Arguments", Req);
+    {undefined, _} -> end_with_failure(400, "No Valid Arguments", Req); %% TODO list files
     {_, undefined} -> end_with_failure(400, "No Valid Arguments", Req);
     {OUkeyBin, FileKeyBin} ->
       OUkey = binary:bin_to_list(OUkeyBin),
