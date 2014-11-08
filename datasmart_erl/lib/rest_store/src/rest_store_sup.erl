@@ -50,6 +50,14 @@ init([]) ->
 
   pg2:create(datastore_rest_listeners),
   {ok, {{one_for_one, 10, 10}, [
+    {qredis,
+      {qredis, start_link, []},
+      permanent, 1000, worker,
+      [qredis]},
+    {couch,
+      {couch, start_link, [CouchUrl, CouchOpts]},
+      permanent, 1000, worker,
+      [couch]},
     {rest_store,
       {rest_store_sup, start_listeners, [Application]},
       permanent, 1000, worker,

@@ -17,7 +17,7 @@
 %% ===================================================================
 
 start() ->
-  rest_user_sup:start_link().
+  rest_files_sup:start_link().
 
 start(_StartType, _StartArgs) ->
   start().

@@ -24,4 +24,5 @@ start() ->
   application:start(cowlib),
   application:start(cowboy),
   application:start(rest_store),
-  application:start(rest_user).
+  application:start(rest_user),
+  application:start(rest_files).
