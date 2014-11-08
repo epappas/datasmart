@@ -11,7 +11,8 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0,
+-export([
+  start_link/2,
   server_info/0,
   create_db/1,
   save/2,
@@ -53,8 +54,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec(start_link() -> {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
-start_link() -> gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+-spec(start_link(_Url, _Options) -> {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
+start_link(Url, Options) -> gen_server:start_link({local, ?SERVER}, ?MODULE, [Url, Options], []).
 
 -spec(server_info() -> {ok, Version :: term()}).
 server_info() -> gen_server:call(?MODULE, {get_info}).
@@ -151,10 +152,9 @@ drop_attachment(DBName, Ref, Name) -> gen_server:cast(?MODULE, {drop_attachment,
   {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
   {stop, Reason :: term()} | ignore).
 
-init([]) -> init(["http://localhost:5984"]);
+init([]) -> init(["http://localhost:5984", []]);
 
-init([Url]) ->
-  Options = [],
+init([Url, Options]) ->
   Server = couchbeam:server_connection(Url, Options),
   State = #state{server = Server, dbList = []},
   {ok, State}.
@@ -392,6 +392,7 @@ db(State, DBName, Options) ->
     {DBName, DB} -> {ok, DB, State};
     false ->
       {ok, DB} = couchbeam:open_or_create_db(State#state.server, DBName, Options),
+      %% TODO case for {error,econnrefused}
       State2 = State#state{dbList = lists:append(CurrentList, [{DBName, DB}])},
       {ok, DB, State2}
   end.

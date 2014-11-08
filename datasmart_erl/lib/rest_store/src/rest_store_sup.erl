@@ -10,7 +10,7 @@
 -behaviour(supervisor).
 
 %% API.
--export([start_listeners/0, start_link/0]).
+-export([start_listeners/0, start_listeners/1, start_link/0]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -27,6 +27,9 @@ start_link() ->
 
 start_listeners() ->
   {ok, Application} = application:get_application(),
+  start_listeners(Application).
+
+start_listeners(Application) ->
   Port = application:get_env(Application, http_port, 4421),
   ListenerCount = application:get_env(Application, http_listener_count, 100),
 
@@ -41,10 +44,14 @@ start_listeners() ->
 %% ===================================================================
 
 init([]) ->
+  {ok, Application} = application:get_application(),
+  CouchUrl = application:get_env(Application, couch_url, "http://localhost:5984"),
+  CouchOpts = application:get_env(Application, couch_opts, []),
+
   pg2:create(datastore_rest_listeners),
   {ok, {{one_for_one, 10, 10}, [
     {rest_store,
-      {rest_store_sup, start_listeners, []},
+      {rest_store_sup, start_listeners, [Application]},
       permanent, 1000, worker,
       [rest_store_sup]}
   ]}}.
