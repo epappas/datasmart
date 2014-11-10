@@ -29,10 +29,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "precise64"
   config.vm.box_url = "http://files.vagrantup.com/precise64.box"
 
-  config.vm.provider :virtualbox do |v|
-    v.check_guest_additions = false
-    v.functional_vboxsf = false
-  end
+  # config.vm.provider :virtualbox do |v|
+  #   v.check_guest_additions = false
+  #   v.functional_vboxsf = false
+  # end
 
   # plugin conflict
   if Vagrant.has_plugin?("vagrant-vbguest") then
@@ -62,17 +62,28 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       config.ssh.forward_agent = true
 
-      config.vm.synced_folder ".", "/home/core/share/data"
-      config.vm.synced_folder ".", "/home/core/share/src"
+      config.vm.synced_folder "./data", "/app/data"
+      config.vm.synced_folder "./datasmart_erl", "/app/src/datasmart_erl"
+      config.vm.synced_folder "./devops", "/app/src/devops"
+      config.vm.synced_folder "./openapi", "/app/src/openapi"
+      config.vm.synced_folder "./opentests", "/app/src/opentests"
 
-      config.vm.provision "docker", images: ["ubuntu", "shykes/couchdb", "redis"]
+      config.vm.provision "docker", images: ["ubuntu", "shykes/couchdb", "redis", "coreos/etcd", "dockerfile/haproxy"]
 
       config.vm.provision "docker" do |d|
-        d.run "couchdb-1", image: "shykes/couchdb", args: "-d -p 5984:5984"
+        d.run "couchdb-1", image: "shykes/couchdb", args: "-d --net=host -p 5984:5984"
       end
 
       config.vm.provision "docker" do |d|
-        d.run "redis-1", image: "redis", args: "-d -p 6379:6379 -p 26379:26379"
+        d.run "redis-1", image: "redis", args: "-d --net=host -p 6379:6379 -p 26379:26379"
+      end
+
+      config.vm.provision "docker" do |d|
+        d.run "etcd-1", image: "coreos/etcd", args: "-d --net=host -p 4001:4001 -p 7001:7001 -p 2379:2379 -p 2380:2380"
+      end
+
+      config.vm.provision "docker" do |d|
+        d.run "haproxy-1", image: "dockerfile/haproxy", args: "-d --net=host -p 80:80 -p 443:443"
       end
 
     end
