@@ -9,7 +9,10 @@
   [
     {description, "REST Interface for backend services"},
     {vsn, "0.0.1"},
-    {registered, [rest_store_sup]},
+    {registered, [
+      rest_store_sup,
+      qredis, hash_md5, ds_util, couch, dcmd
+    ]},
     {applications, [
       kernel,
       stdlib,

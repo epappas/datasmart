@@ -9,11 +9,16 @@
   [
     {description, "REST Interface for file uploads"},
     {vsn, "0.0.1"},
-    {registered, [rest_files_sup, files_handler, qredis, hash_md5, ds_util, couch]},
+    {registered, [
+      rest_files_sup,
+      qredis, hash_md5, ds_util, couch, dcmd,
+      files_handler
+    ]},
     {applications, [
       kernel,
       stdlib,
-      cowboy
+      cowboy,
+      rest_store
     ]},
     {mod, {rest_files_app, []}},
     {env, []}

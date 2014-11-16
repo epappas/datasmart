@@ -10,17 +10,18 @@
     {description, "REST Interface for user"},
     {vsn, "0.0.1"},
     {registered, [
-      rest_user_sup, user_handler, qredis,
-      hash_md5, ds_util, couch,
-      user_server, srp_server, sign_server,
-      rest_uregister_handler, rest_srpverify_handler,
-      rest_srpanswer_handler, rest_ouserkey_handler,
-      rest_oapikey_handler
+      rest_user_sup, user_handler,
+      qredis, hash_md5, ds_util, couch, dcmd,
+      user_server, srp_server,
+      sign_server, rest_uregister_handler,
+      rest_srpverify_handler, rest_srpanswer_handler,
+      rest_ouserkey_handler, rest_oapikey_handler
     ]},
     {applications, [
       kernel,
       stdlib,
-      cowboy
+      cowboy,
+      rest_store
     ]},
     {mod, {rest_user_app, []}},
     {env, []}
