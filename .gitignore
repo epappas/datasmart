@@ -13,4 +13,16 @@ rel/example_project
 .DS_Store
 .idea/
 .idea/*
+.vagrant/
+.vagrant/*
+experimental/
+experimental/*
+*.log
+*.log.*
 .log
+*.csr
+.csr
+*.key
+.key
+*.save
+.save
