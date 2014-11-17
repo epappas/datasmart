@@ -11,7 +11,13 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0, q/1]).
+-export([
+  q/1,
+  start_link/0,
+  start_link/2,
+  start_link/3,
+  start_link/4
+]).
 
 %% gen_server callbacks
 -export([init/1,
@@ -28,8 +34,16 @@
 %%%===================================================================
 
 start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+  gen_server:start_link({local, ?SERVER}, ?MODULE, ["127.0.0.1", 6379, 0, ""], []).
 
+start_link(Host, Port) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [Host, Port, 0, ""], []).
+
+start_link(Host, Port, Database) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [Host, Port, Database, ""], []).
+
+start_link(Host, Port, Database, Password) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [Host, Port, Database, Password], []).
 
 q(Req) ->
   gen_server:call(?MODULE, Req).
@@ -38,8 +52,8 @@ q(Req) ->
 %%% gen_server callbacks
 %%%===================================================================
 
-init([]) ->
-  {ok, Conn} = eredis:start_link(),
+init([Host, Port, Database, Password]) ->
+  {ok, Conn} = eredis:start_link(Host, Port, Database, Password),
   {ok, Conn}.
 
 handle_call(Request, _From, Conn) ->

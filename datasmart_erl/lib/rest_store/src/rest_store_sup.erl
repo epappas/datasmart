@@ -45,13 +45,33 @@ start_listeners(Application) ->
 
 init([]) ->
   {ok, Application} = application:get_application(),
-  CouchUrl = application:get_env(Application, couch_url, "http://localhost:5984"),
+
+  CouchUrl =
+    case application:get_env(Application, couch_port) of
+      undefined -> application:get_env(Application, couch_url, "http://localhost:5984");
+      COUCH_PORT ->
+        re:replace(COUCH_PORT, "tcp", "http", [global, {return, list}])
+    end,
   CouchOpts = application:get_env(Application, couch_opts, []),
+
+  RedisHost =
+    case application:get_env(Application, redis_port) of
+      undefined -> application:get_env(Application, redis_host, "127.0.0.1");
+      REDIS_PORT ->
+        Str1 = re:replace(REDIS_PORT, "tcp://", [global, {return, list}]),
+        Tokens = string:tokens(Str1, ":"),
+        [Host|_T] = Tokens,
+        Host
+    end,
+
+  RedisPort = 6379,
+  RedisDatabase = application:get_env(Application, redis_db, 0),
+  RedisPassword = application:get_env(Application, redis_pass, ""),
 
   pg2:create(datastore_rest_listeners),
   {ok, {{one_for_one, 10, 10}, [
     {qredis,
-      {qredis, start_link, []},
+      {qredis, start_link, [RedisHost, RedisPort, RedisDatabase, RedisPassword]},
       permanent, 1000, worker,
       [qredis]},
     {couch,
