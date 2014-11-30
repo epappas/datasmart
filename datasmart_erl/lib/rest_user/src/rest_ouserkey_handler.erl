@@ -67,7 +67,7 @@ uri_too_long(Req, State) -> {false, Req, State}.
 allowed_methods(Req, State) ->
   Method = cowboy_req:method(Req),
   NewState = State#state{method = Method},
-  {[<<"HEAD">>, <<"GET">>, <<"POST">>, <<"PUT">>, <<"OPTIONS">>], Req, NewState}.
+  {[<<"HEAD">>, <<"GET">>, <<"OPTIONS">>], Req, NewState}.
 
 %% FLOW: ALL[5] OR 400
 %% Return whether the request is malformed.
