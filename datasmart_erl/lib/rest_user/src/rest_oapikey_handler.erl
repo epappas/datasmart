@@ -139,7 +139,8 @@ variances(Req, State) -> {[], Req, State}.
 
 %% FLOW: ALL[14], GET[0], HEAD[0], POST[0], PUT[0], PATCH[0], DELETE[0]
 %% Return whether the resource exists.
-resource_exists(Req, State) -> {true, Req, State}.
+resource_exists(Req, State#state{ukey = Ukey}) ->
+  {Ukey =/= undefined, Req, State}.
 
 %% FLOW: IF resource_exists =:= false ALL[15], GET[1], HEAD[1], POST[1], PATCH[1], DELETE[1] THEN 404
 %% Return whether the resource existed previously.
