@@ -179,10 +179,6 @@ handle_call({register, Email, Password}, _From, State) ->
         {<<"alias">>, list_to_binary(Email)}
       ]}),
 
-      %% lets index/cache them ?
-      qredis:q(["HSETNX", "datasmart:alias", Email, Email]),
-      qredis:q(["HSETNX", "datasmart:alias:keys", Email, OUKey]),
-
       {reply, {ok, [{email, list_to_binary(Email)}, {oukey, list_to_binary(OUKey)}]}, State};
     _ -> {reply, {error, "Registration Failure, User Exists"}, State}
   end;

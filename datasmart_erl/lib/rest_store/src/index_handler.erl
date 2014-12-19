@@ -8,29 +8,21 @@
 -module(index_handler).
 -author("epappas").
 
--export([init/3]).
--export([handle/2]).
--export([terminate/3]).
+-export([init/2]).
+-export([
+  allowed_methods/2,
+  content_types_provided/2,
+  get_json/2
+]).
 
-init(_Transport, Req, _Opts) ->
-  {ok, Req, undefined}.
+init(Req, Opts) -> {cowboy_rest, Req, Opts}.
 
+allowed_methods(Req, State) ->
+  {[<<"HEAD">>, <<"GET">>], Req, State}.
 
-handle(Req, State) ->
-  {Method, Req1} = cowboy_req:method(Req),
-  {SomeKey, Req2} = cowboy_req:binding(key, Req1),
+content_types_provided(Req, State) ->
+  {[{{<<"application">>, <<"json">>, '*'}, get_json}], Req, State}.
 
-  cowboy_req:reply(200, [
-    {<<"content-type">>, <<"application/json; charset=utf-8">>},
-    {<<"server">>, <<"myinbox-datastore">>}
-  ], jiffy:encode({[
-    {status, ok},
-    {method, Method},
-    {key, SomeKey}
-  ]}), Req2),
-
-  {ok, Req2, State}.
-
-
-terminate(_Reason, _Req, _State) ->
-  ok.
+get_json(Req, State) ->
+  Req2 = cowboy_req:set_resp_header(<<"server">>, <<"myinbox-datastore">>, Req),
+  {jiffy:encode({[{status, ok}]}), Req2, State}.

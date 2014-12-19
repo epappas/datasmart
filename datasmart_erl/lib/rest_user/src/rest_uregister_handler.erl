@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author evangelosp
-%%% @copyright (C) 2014, <COMPANY>
+%%% @copyright (C) 2014, evalonlabs
 %%% @doc
 %%%
 %%% @end
@@ -8,59 +8,84 @@
 -module(rest_uregister_handler).
 -author("evangelosp").
 
--export([init/3]).
+-export([init/2]).
+-export([
+  allowed_methods/2,
+  content_types_accepted/2,
+  forbidden/2,
+  is_authorized/2,
+  known_methods/2,
+  options/2,
+  service_available/2
+]).
 -export([handle/2]).
--export([terminate/3]).
 
-init(_Transport, Req, []) ->
-  {ok, Req, undefined}.
+-record(state, {
+  state = init, method, isAuthorized = true, is_conflict = false,
+  etag, email, password, registred
+}).
 
-handle(Req, State) ->
-  {Method, _} = cowboy_req:method(Req),
-  {ok, Req3} = process(Method, Req),
-  {ok, Req3, State}.
+%% FLOW: ALL[0]
+init(Req, _Opts) ->
+  {cowboy_rest, Req, #state{}}.
 
-process(<<"POST">>, Req) ->
-  {ok, Params, Req2} = cowboy_req:body_qs(Req),
+%% FLOW: ALL[1] OR 503
+%% Return whether the service is available.
+service_available(Req, State) -> {true, Req, State}.
 
-  EmailBin = proplists:get_value(<<"email">>, Params),
-  PasswordBin = proplists:get_value(<<"password">>, Params),
+%% FLOW: ALL[2] OR 501
+%% Return the list of known methods.
+known_methods(Req, State) ->
+  {[<<"GET">>, <<"HEAD">>, <<"POST">>, <<"PUT">>, <<"PATCH">>, <<"DELETE">>, <<"OPTIONS">>], Req, State}.
 
-  case EmailBin of
-    undefined -> end_with_failure(400, "No Valid Arguments", Req);
-    EmailBin ->
-      Email = binary:bin_to_list(EmailBin),
-      Password = case PasswordBin of
-                   undefined -> undefined;
-                   PasswordBin -> binary:bin_to_list(PasswordBin)
-                 end,
-      case handle_query({register, Email, Password}, Req2) of
-        {ok, Resp, _} ->
-          echo(200, jiffy:encode({Resp}), Req2);
-        _ ->
-          end_with_failure(400, "Uknown Error", Req)
-      end
-  end;
+%% FLOW: ALL[4] OR 405
+%% Return the list of allowed methods.
+allowed_methods(Req, State) ->
+  Method = cowboy_req:method(Req),
+  NewState = State#state{method = Method},
+  {[<<"POST">>, <<"OPTIONS">>], Req, NewState}.
 
-process(_, Req) ->
-  end_with_failure(405, "Method not allowed.", Req).
+%% FLOW: ALL[6] OR 401
+%% Return whether the user is authorized to perform the action.
+is_authorized(Req, State) ->
+  NewState = State#state{state = authorization},
+  {true, Req, NewState}.
 
-handle_query({register, Email, Password}, Req) ->
-  {ok, Registred} = user_server:register(Email, Password),
-  {ok, Registred, Req}.
+%% FLOW: ALL[7] OR 403
+%% Return whether access to the resource is forbidden.
+forbidden(Req, State = #state{isAuthorized = IsAuthorized}) ->
+  {not IsAuthorized, Req, State}.
 
-echo(Status, Echo, Req) ->
-  cowboy_req:reply(Status, [
-    {<<"content-type">>, <<"application/json; charset=utf-8">>},
-    {<<"server">>, <<"myinbox-datastore">>}
-  ], Echo, Req).
+%% FLOW: ALL[10], OPTIONS[0] THEN 200
+%% Handle a request for information.
+options(Req, State) -> {ok, Req, State}.
 
-end_with_failure(Code, Message, Req) ->
-  echo(Code, jiffy:encode({[
-    {code, Code},
-    {status, error},
-    {error, Message}
-  ]}), Req).
+%% FLOW: ALL[15,17,19], POST[1,3,5], PUT[2], PATCH[4] THEN 201,204 OR 400
+%% Return the list of content-types the resource accepts.
+content_types_accepted(Req, State) ->
+  NewState = State#state{state = types_accepted},
+  {[{{<<"application">>, <<"json">>, '*'}, handle}], Req, NewState}.
 
-terminate(_Reason, _Req, _State) ->
-  ok.
+handle(Req, State = #state{method = <<"POST">>}) ->
+  {ok, JsonBin, _} = cowboy_req:body(Req),
+
+  {QsKVList} = jiffy:decode(JsonBin),
+
+  {_, EmailBin} = lists:keyfind(<<"email">>, 1, QsKVList),
+  {_, PasswordBin} = lists:keyfind(<<"password">>, 1, QsKVList),
+
+  case EmailBin =/= undefined andalso
+    PasswordBin =/= undefined of
+    true ->
+      Email = binary_to_list(EmailBin),
+      Password = binary_to_list(PasswordBin),
+
+      case user_server:register(Email, Password) of
+        {ok, Registred} ->
+          NewState = State#state{registred = Registred},
+          {true, cowboy_req:set_resp_body(jiffy:encode({Registred}), Req), NewState};
+        _ -> {false, Req, State}
+      end;
+    false ->
+      {stop, Req, State}
+  end.

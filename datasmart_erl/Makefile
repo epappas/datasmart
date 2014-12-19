@@ -1,6 +1,6 @@
 EVAL ?= "application:start(rest_store)."
 START ?= rest_store
-NODE ?= datastore
+NODE ?= datasmart
 HOSTNAME ?= `uname -n`
 REBAR ?= "./rebar"
 CONFIG ?= "datasmart.config"

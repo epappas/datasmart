@@ -2,22 +2,48 @@ FROM ubuntu:trusty
 
 MAINTAINER Evangelos Pappas <epappas@evalonlabs.com>
 
-RUN apt-get update && apt-get -y upgrade && apt-get -y install wget git openssl
+# ------------------------------------------
+# Download Dependencies of the enviroment
+# ------------------------------------------
+RUN apt-get update && apt-get -y upgrade && \
+    apt-get -y install wget git openssl
 
+# ------------------------------------------
+# Download Erlang
+# ------------------------------------------
 RUN cd /tmp; wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb && \
     dpkg -i erlang-solutions_1.0_all.deb
 
-RUN apt-get update && apt-get -y install erlang erlang-base-hipe build-essential
+# ------------------------------------------
+# Install Erlang
+# ------------------------------------------
+RUN apt-get update && apt-get -y install \
+    erlang erlang-base-hipe build-essential
 
-#Configuration
+# ------------------------------------------
+# Set Volume
+# ------------------------------------------
 ADD . /app
 
-RUN cd /app; make clean
+# ------------------------------------------
+# Environment Variables
+# ------------------------------------------
+ENV ENV_VOLUME /app
 
-RUN cd /app; make package
+# ------------------------------------------
+# Set up the Environment
+# ------------------------------------------
+RUN cd /app; make clean; make all; make package
 
-RUN cd /app/rest_store
+RUN cd /app; chmod +x /app/start.sh
+RUN cd /app; /app/start.sh
 
+# ------------------------------------------
+# Expose Ports
+# ------------------------------------------
 EXPOSE 4421
 
-CMD ["/app/bin/rest_store", "start"]
+# ------------------------------------------
+# Run The Service
+# ------------------------------------------
+CMD ["/app/rest_store/bin/rest_store", "start"]
