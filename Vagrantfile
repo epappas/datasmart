@@ -5,7 +5,7 @@ require 'fileutils'
 
 Vagrant.require_version ">= 1.6.0"
 
-CONFIG = File.join(File.dirname(__FILE__), "config.rb")
+CONFIG = File.join(File.dirname(__FILE__), "Vagrant-config.rb")
 VAGRANTFILE_API_VERSION = "2"
 
 $num_instances = 1
@@ -87,6 +87,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       config.vm.provision "docker" do |d|
         d.run "haproxy-1", image: "dockerfile/haproxy", args: "-d -p 80:80 -p 443:443"
+      end
+
+      config.vm.provision "shell" do |s|
+        s.path = "datasmart_erl/bootstrap.sh"
+        s.args = ["datasmart","0.0.1","172.17.0.5","datasmart","4421","/app","Basic","/home/core/share/src/datasmart_erl"]
       end
     end
   end
