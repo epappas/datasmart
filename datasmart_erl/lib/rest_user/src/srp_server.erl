@@ -69,7 +69,7 @@ derived_key(Salt, Hashed) -> crypto:hash(sha, [Salt, Hashed]).
 
 prime(UserPrimeBytes, UserGenerator) -> crypto:dh_generate_parameters(UserPrimeBytes, UserGenerator).
 
-new_salt() -> uuid:to_string(uuid:uuid3(uuid:uuid4(), uuid:to_string(uuid:uuid1()))).
+new_salt() -> ds_util:uuid().
 
 %% [
 %%   {privKey, PrivKey},

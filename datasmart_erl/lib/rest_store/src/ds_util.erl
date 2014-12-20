@@ -10,6 +10,7 @@
 
 %% API
 -export([
+  uuid/0,
   list_to_keyval/1,
   list_to_keyval_rev/1,
   timestamp/0,
@@ -17,6 +18,9 @@
   now/0,
   now/1
 ]).
+
+uuid() ->
+  uuid:to_string(uuid:uuid3(uuid:uuid4(), uuid:to_string(uuid:uuid1()))).
 
 timestamp() -> timestamp(os:timestamp()).
 
