@@ -12,7 +12,7 @@
 
 %% API
 -export([start_link/0,
-  register/2,
+  register/1,
   add_aukey/3,
   getukey/1,
   match_ouKey/1,
@@ -37,6 +37,8 @@
 
 -record(state, {}).
 
+-include("user_records.hrl").
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -44,7 +46,7 @@
 start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-register(Email, Password) -> gen_server:call(?MODULE, {register, Email, Password}).
+register(Email) -> gen_server:call(?MODULE, {register, Email}).
 
 add_aukey(Ukey, AUKey, Secret) -> gen_server:call(?MODULE, {addaukey, Ukey, AUKey, Secret}).
 
@@ -109,100 +111,61 @@ dencrypt(Ukey, IVec, Text) ->
 init([]) ->
   {ok, #state{}}.
 
-handle_call({register, Email, Password}, _From, State) ->
-  MD5Key = hash_md5:build(Email),
-  OpenSalt = srp_server:new_salt(),
-  OUKey = hashPass(MD5Key, OpenSalt, 2),
-  Secret = srp_server:new_salt(),
-  Salt = srp_server:new_salt(),
-  Version = '6a', %% get User's Version
-  UserRSABits = 2048, %% Define RSA bits
-  UserPrimeBytes = 256, %% get Prime of user
-  UserGenerator = 2, %% get generator of user
-  Factor = 20,
-  case couch:get("erl_users_secrets", MD5Key) of
-    {error, _Error} -> %% User Should not exist
+handle_call({register, Email}, _From, State) ->
+  Version = ?User_SRP_Version, %% get User's Version
+  UserRSABits = ?User_RSA_Bits, %% Define RSA bits
+  UserPrimeBytes = ?User_Prime_Bytes, %% get Prime of user
+  UserGenerator = ?User_Generator, %% get generator of user
+  Factor = ?Factor,
 
-      [Prime, Generator] = srp_server:prime(UserPrimeBytes, UserGenerator),
-      DerivedKey = srp_server:derived_key(Salt, Email, Password, Factor),
-      Verifier = srp_server:verifier(Generator, DerivedKey, Prime),
-      {_, PrivKey} = crypto:generate_key(srp, {user, [Generator, Prime, Version]}),
-      {privKey, RsaPrivKey} = sign_server:generate_rsa(private, UserRSABits),
+  case ukey_server:check(Email) of
+    {nonexist, {key, MD5Key}} ->
 
-      %% Super Normilize user's data, for security reasons.
-      %% Sensitive data shouldn't by acccident be replicated in a non-secure couchDB
-      %% but user's profile can
-      couch:save("erl_users", {[
+      %% Generate a User
+      {ok, [{email, Email}, {ukey, UKey}]} =
+        ukey_server:generate(#ukey_generate{
+          email = Email, userPrimeBytes = UserPrimeBytes,
+          userGenerator = UserGenerator,
+          factor = Factor, version = Version,
+          userRSABits = UserRSABits
+        }),
+
+      %% Generate an Open Key for this user
+      {ok, [{oukey, OUKey}, {secret, Secret}]} =
+        oukey_server:generate(#oukey_generate{
+          ukey = UKey, userPrimeBytes = UserPrimeBytes,
+          userGenerator = UserGenerator,
+          factor = Factor, version = Version,
+          userRSABits = UserRSABits
+        }),
+
+      %% Generate an Access Key for this Open Key
+      {ok, [{aukey, AUKey}, {asecret, ASecret}]} =
+        aukey_server:generate(#aukey_generate{
+          oukey = OUKey, userPrimeBytes = UserPrimeBytes,
+          userGenerator = UserGenerator,
+          factor = Factor, version = Version,
+          userRSABits = UserRSABits
+        }),
+
+      %% Store primary email as both Alias & source
+      couch:save(?couch_user_alias, {[
         {<<"_id">>, list_to_binary(MD5Key)},
-        {<<"key">>, list_to_binary(MD5Key)},
-        {<<"email">>, list_to_binary(Email)},
-        {<<"openkey">>, list_to_binary(OUKey)},
-        {<<"alias">>, [list_to_binary(Email)]}
-      ]}),
-      couch:save("erl_users_oukeys", {[
-        {<<"_id">>, list_to_binary(OUKey)},
-        {<<"key">>, list_to_binary(MD5Key)},
-        {<<"openkey">>, list_to_binary(OUKey)}
-      ]}),
-      couch:save("erl_users_salts", {[
-        {<<"_id">>, list_to_binary(MD5Key)},
-        {<<"key">>, list_to_binary(MD5Key)},
-        {<<"salt">>, list_to_binary(Salt)}
-      ]}),
-      couch:save("erl_users_secrets", {[
-        {<<"_id">>, list_to_binary(MD5Key)},
-        {<<"key">>, list_to_binary(MD5Key)},
-        {<<"secret">>, list_to_binary(Secret)}
-      ]}),
-      couch:save("erl_users_essentials", {[
-        {<<"_id">>, list_to_binary(MD5Key)},
-        {<<"verifier">>, base64:encode(Verifier)},
-        {<<"prime">>, base64:encode(Prime)},
-        {<<"generator">>, Generator},
-        {<<"userPrimeBytes">>, UserPrimeBytes},
-        {<<"userGenerator">>, UserGenerator},
-        {<<"salt">>, base64:encode(list_to_binary(Salt))},
-        {<<"version">>, Version},
-        {<<"rsaPrivKey">>, base64:encode(RsaPrivKey)},
-        {<<"rsaBits">>, UserRSABits},
-        {<<"privKey">>, base64:encode(PrivKey)},
-        {<<"factor">>, Factor}
-      ]}),
-      %% couch:save("erl_users_pass", {[
-      %%   {<<"_id">>, list_to_binary(MD5Key)},
-      %%   {<<"pass">>, list_to_binary(hashPass(Password, Salt, 20))}
-      %% ]}),
-      couch:save("erl_users_alias", {[
-        {<<"_id">>, list_to_binary(Email)},
-        {<<"key">>, list_to_binary(MD5Key)},
+        {<<"key">>, list_to_binary(UKey)},
         {<<"email">>, list_to_binary(Email)},
         {<<"alias">>, list_to_binary(Email)}
       ]}),
 
-      {reply, {ok, [{email, list_to_binary(Email)}, {oukey, list_to_binary(OUKey)}]}, State};
-    _ -> {reply, {error, "Registration Failure, User Exists"}, State}
+      {reply, {ok, [
+        {email, list_to_binary(Email)},
+        {oukey, list_to_binary(OUKey)},
+        {secret, list_to_binary(Secret)},
+        {aukey, list_to_binary(AUKey)},
+        {asecret, list_to_binary(ASecret)}
+      ]}, State};
+    _ -> {reply, {error, "Registration Failure"}, State}
   end;
 
-handle_call({addaukey, Ukey, AUKey, Secret}, _From, State) ->
-  case couch:get("erl_users_salts", Ukey) of
-    {error, Error} -> {reply, {error, Error}, State};
-    {ok, SaltJson} ->
-      %% {SaltJson} = jiffy:decode(BSaltJson),
-      {SaltKVList} = SaltJson,
-      Salt = proplists:get_value(<<"salt">>, SaltKVList),
-
-      couch:save("erl_users_accesskeys", {[
-        {<<"_id">>, AUKey},
-        {<<"ukey">>, Ukey},
-        {<<"aukey">>, AUKey},
-        {<<"secret">>, hashPass(Secret, Salt, 20)}
-      ]}),
-
-      %% lets index/cache them ?
-      qredis:q(["SET", lists:concat(["datasmart:acesskey:", AUKey, ":ukey"]), Ukey]),
-      {reply, {ok, [{ukey, Ukey}, {aukey, AUKey}, {secret, Secret}]}, State};
-    Error -> {reply, {error, Error}, State}
-  end;
 
 handle_call({srp_essentials, Ukey}, _From, State) ->
   {reply, doEssentials(Ukey), State};
@@ -257,7 +220,7 @@ doCheckuser(Email, Password) ->
               %% {PassJson} = jiffy:decode(BPassJson),
               {PassKVList} = PassJson,
               UserPass = proplists:get_value(<<"pass">>, PassKVList),
-              HashPass = hashPass(Password, Salt, 20),
+              HashPass = ds_util:hashPass(Password, Salt, 20),
 
               case UserPass =:= HashPass of
                 true -> {ok, Ukey};
@@ -308,7 +271,7 @@ doMatchAUKey(AUKey, Secret) ->
           {SaltKVList} = SaltJson,
           Salt = proplists:get_value(<<"salt">>, SaltKVList),
 
-          HashSecret = hashPass(Secret, Salt, 20),
+          HashSecret = ds_util:hashPass(Secret, Salt, 20),
 
           case StoredSecret =:= HashSecret of
             true -> {ok, Ukey};
@@ -360,12 +323,3 @@ doUpdateProfile(Ukey, KeyValList) ->
       end;
     Error -> {error, Error}
   end.
-
-hashPass(Password, Salt, 0) ->
-  hash_md5:build(lists:concat([Password, Salt]));
-
-hashPass(Password, Salt, Factor) when (Factor rem 2) > 0 ->
-  hashPass(hash_md5:build(lists:concat([Password, Salt])), Salt, Factor - 1);
-
-hashPass(Password, Salt, Factor) ->
-  hashPass(hash_md5:build(lists:concat([Salt, Password])), Salt, Factor - 1).
