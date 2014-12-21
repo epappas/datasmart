@@ -16,7 +16,8 @@
   timestamp/0,
   timestamp/1,
   now/0,
-  now/1
+  now/1,
+  hashPass/3
 ]).
 
 uuid() ->
@@ -39,3 +40,12 @@ list_to_keyval([K, V | T]) -> [{K, V} | list_to_keyval(T)].
 list_to_keyval_rev([]) -> [];
 
 list_to_keyval_rev([K, V | T]) -> [{V, K} | list_to_keyval(T)].
+
+hashPass(Password, Salt, 0) ->
+  hash_md5:build(lists:concat([Password, Salt]));
+
+hashPass(Password, Salt, Factor) when (Factor rem 2) > 0 ->
+  hashPass(hash_md5:build(lists:concat([Password, Salt])), Salt, Factor - 1);
+
+hashPass(Password, Salt, Factor) ->
+  hashPass(hash_md5:build(lists:concat([Salt, Password])), Salt, Factor - 1).
