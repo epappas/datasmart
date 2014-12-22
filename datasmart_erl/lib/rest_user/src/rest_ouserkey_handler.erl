@@ -94,7 +94,7 @@ handle(Req, State = #state{method = <<"GET">>, state = malformed_request}) ->
   end;
 
 handle(Req, State = #state{method = <<"GET">>, oukey = OUkey, state = is_authorized}) ->
-  case user_server:match_ouKey(OUkey) of
+  case oukey_server:get_ukey({oukey, OUkey}) of
     {ok, Ukey} ->
       NewState = State#state{ukey = Ukey, isAuthorized = true},
       {true, Req, NewState};

@@ -15,7 +15,9 @@
 
 %% gen_server callbacks
 -export([
-  generate/1
+  generate/1,
+  get_ukey/1,
+  srp_essentials/1
 ]).
 
 -export([
@@ -44,6 +46,10 @@ start_link() ->
 
 generate(#oukey_generate{} = Token) -> gen_server:call(?MODULE, {generate, Token}).
 
+get_ukey({Type, Value}) -> gen_server:call(?MODULE, {get_ukey, {Type, Value}}).
+
+srp_essentials(Key) -> gen_server:call(?MODULE, {srp_essentials, Key}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -64,7 +70,7 @@ init([]) ->
   {stop, Reason :: term(), NewState :: #state{}}).
 
 handle_call({generate, #oukey_generate{ukey = UKey,
-  userPrimeBytes = UserPrimeBytes,
+  email = Email, userPrimeBytes = UserPrimeBytes,
   userGenerator = UserGenerator, factor = Factor,
   version = Version, userRSABits = UserRSABits
 }}, _From, State) ->
@@ -83,6 +89,7 @@ handle_call({generate, #oukey_generate{ukey = UKey,
   couch:save(?couch_oukeys, {[
     {<<"_id">>, list_to_binary(OUKey)},
     {<<"key">>, list_to_binary(UKey)},
+    {<<"email">>, list_to_binary(Email)},
     {<<"openkey">>, list_to_binary(OUKey)},
     {<<"scope">>, jiffy:encode(?Scope_all)}
   ]}),
@@ -114,6 +121,25 @@ handle_call({generate, #oukey_generate{ukey = UKey,
     {oukey, list_to_binary(OUKey)},
     {secret, list_to_binary(Secret)}
   ]}, State};
+
+handle_call({get_ukey, {oukey, OUkey}}, _From, State) ->
+  case couch:get(?couch_oukeys, OUkey) of
+    {error, _Error} -> {error, "Uknown Key"};
+    {ok, OUKeyJson} ->
+      {OUKeyKVList} = OUKeyJson,
+      Ukey = proplists:get_value(<<"key">>, OUKeyKVList),
+      {reply, {ok, Ukey}, State};
+    _ -> {error, "Uknown Key"}
+  end;
+
+handle_call({srp_essentials, Key}, _From, State) ->
+  case couch:get(?couch_secrets, Key) of
+    {error, Error} -> {error, Error};
+    {ok, EssentialsJson} ->
+      {EssentialsKVList} = EssentialsJson,
+      {reply, {ok, EssentialsKVList}, State};
+    Error -> {error, Error}
+  end;
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.

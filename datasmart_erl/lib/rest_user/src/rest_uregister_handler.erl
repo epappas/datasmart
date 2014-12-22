@@ -72,15 +72,12 @@ handle(Req, State = #state{method = <<"POST">>}) ->
   {QsKVList} = jiffy:decode(JsonBin),
 
   {_, EmailBin} = lists:keyfind(<<"email">>, 1, QsKVList),
-  {_, PasswordBin} = lists:keyfind(<<"password">>, 1, QsKVList),
 
-  case EmailBin =/= undefined andalso
-    PasswordBin =/= undefined of
+  case EmailBin =/= undefined of
     true ->
       Email = binary_to_list(EmailBin),
-      Password = binary_to_list(PasswordBin),
 
-      case user_server:register(Email, Password) of
+      case user_server:register(Email) of
         {ok, Registred} ->
           NewState = State#state{registred = Registred},
           {true, cowboy_req:set_resp_body(jiffy:encode({Registred}), Req), NewState};

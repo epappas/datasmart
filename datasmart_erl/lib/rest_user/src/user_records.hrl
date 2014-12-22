@@ -36,6 +36,6 @@
 -define(couch_user_alias, "erl_users_alias").
 
 -record(ukey_generate, {email, userPrimeBytes, userGenerator, factor, version, userRSABits}).
--record(oukey_generate, {ukey, userPrimeBytes, userGenerator, factor, version, userRSABits}).
+-record(oukey_generate, {ukey, email, userPrimeBytes, userGenerator, factor, version, userRSABits}).
 -record(aukey_generate, {oukey, userPrimeBytes, userGenerator, factor, version, userRSABits}).
 

@@ -15,7 +15,8 @@
 
 %% gen_server callbacks
 -export([
-  generate/1
+  generate/1,
+  srp_essentials/1
 ]).
 
 -export([
@@ -43,6 +44,8 @@ start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 generate(#aukey_generate{} = Token) -> gen_server:call(?MODULE, {generate, Token}).
+
+srp_essentials(Key) -> gen_server:call(?MODULE, {srp_essentials, Key}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -114,6 +117,15 @@ handle_call({generate, #aukey_generate{oukey = OUKey,
     {aukey, list_to_binary(AUKey)},
     {asecret, list_to_binary(ASecret)}
   ]}, State};
+
+handle_call({srp_essentials, Key}, _From, State) ->
+  case couch:get(?couch_secrets, Key) of
+    {error, Error} -> {error, Error};
+    {ok, EssentialsJson} ->
+      {EssentialsKVList} = EssentialsJson,
+      {reply, {ok, EssentialsKVList}, State};
+    Error -> {error, Error}
+  end;
 
 handle_call(_Request, _From, State) ->
   {reply, ok, State}.

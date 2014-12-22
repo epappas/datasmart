@@ -16,7 +16,9 @@
 %% gen_server callbacks
 -export([
   generate/1,
-  check/1
+  check/1,
+  get_ukey/1,
+  srp_essentials/1
 ]).
 
 -export([
@@ -44,7 +46,12 @@ start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 check(Email) -> gen_server:call(?MODULE, {check, Email}).
+
+get_ukey({Type, Value}) -> gen_server:call(?MODULE, {get_ukey, {Type, Value}}).
+
 generate(#ukey_generate{} = Token) -> gen_server:call(?MODULE, {generate, Token}).
+
+srp_essentials(Key) -> gen_server:call(?MODULE, {srp_essentials, Key}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -117,6 +124,11 @@ handle_call({generate, #ukey_generate{email = Email,
     {<<"rsaBits">>, UserRSABits}
   ]}),
 
+  couch:save(?couch_md5keys, {[
+    {<<"_id">>, list_to_binary(MD5Key)},
+    {<<"key">>, list_to_binary(UKey)}
+  ]}),
+
   {reply, {ok, [
     {email, list_to_binary(Email)},
     {ukey, list_to_binary(UKey)}
@@ -124,12 +136,33 @@ handle_call({generate, #ukey_generate{email = Email,
 
 handle_call({check, Email}, _From, State) ->
   MD5Key = hash_md5:build(Email),
-
+  %% TODO implement HEAD req instead of GET
   case couch:get(?couch_md5keys, MD5Key) of
     {error, _Error} -> %% User Should not exist
       {reply, {exist, {key, MD5Key}}, State};
     _ ->
       {reply, {nonexist, {key, MD5Key}}, State}
+  end;
+
+handle_call({get_ukey, {email, Email}}, _From, State) ->
+  MD5Key = hash_md5:build(Email),
+
+  case couch:get(?couch_md5keys, MD5Key) of
+    {ok, DocJson} ->
+      {DocKVList} = DocJson,
+      UKey = proplists:get_value(<<"key">>, DocKVList),
+      {reply, {ok, UKey}, State};
+    {error, Error} ->
+      {reply, {error, Error}, State}
+  end;
+
+handle_call({srp_essentials, Key}, _From, State) ->
+  case couch:get(?couch_secrets, Key) of
+    {error, Error} -> {error, Error};
+    {ok, EssentialsJson} ->
+      {EssentialsKVList} = EssentialsJson,
+      {reply, {ok, EssentialsKVList}, State};
+    Error -> {error, Error}
   end;
 
 handle_call(_Request, _From, State) ->
