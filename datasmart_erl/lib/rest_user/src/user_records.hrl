@@ -34,8 +34,10 @@
 -define(couch_secrets, "erl_users_secrets").
 -define(couch_rsa, "erl_users_rsa").
 -define(couch_user_alias, "erl_users_alias").
+-define(couch_atokens, "erl_users_atokens").
 
 -record(ukey_generate, {email, userPrimeBytes, userGenerator, factor, version, userRSABits}).
 -record(oukey_generate, {ukey, email, userPrimeBytes, userGenerator, factor, version, userRSABits}).
 -record(aukey_generate, {oukey, userPrimeBytes, userGenerator, factor, version, userRSABits}).
+-record(atoken_generate, {aukey, expires, scope = []}).
 
