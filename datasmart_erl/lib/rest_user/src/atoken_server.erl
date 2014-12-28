@@ -44,10 +44,13 @@
 start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
+-spec(check(AToken :: term()) -> {ok, State :: term()} | {error, list()}).
 check(AToken) -> gen_server:call(?MODULE, {check, AToken}).
 
+-spec(get_aukey({Type :: term(), Value :: term()}) -> {ok, AUKey :: term()} | {error, Error :: term()}).
 get_aukey({Type, Value}) -> gen_server:call(?MODULE, {get_aukey, {Type, Value}}).
 
+-spec(generate(Token :: #ukey_generate{}) -> {ok, list()}).
 generate(#ukey_generate{} = Token) -> gen_server:call(?MODULE, {generate, Token}).
 
 %%%===================================================================
@@ -92,17 +95,24 @@ handle_call({check, AToken}, _From, State) ->
   case couch:get(?couch_atokens, AToken) of
     {ok, DocJson} ->
       {DocKVList} = DocJson,
+      AUKey = proplists:get_value(<<"key">>, DocKVList),
       Salt = proplists:get_value(<<"salt">>, DocKVList),
       Scope = proplists:get_value(<<"scope">>, DocKVList, []),
       ExpiresBin = proplists:get_value(<<"expires">>, DocKVList, <<"0">>),
       Expires = binary_to_integer(ExpiresBin),
 
-      case ds_util:timestamp() > Expires of
+      Condition = ds_util:timestamp() > Expires
+        andalso
+        %% Check if AUKey still exists
+        checkKey(AUKey),
+
+      case Condition of
         true ->
           %% TODO drop the doc
-          {reply, {error, "Expired"}, State};
+          {reply, {error, "Invalid Token"}, State};
         false ->
           {reply, {ok, [
+            {aukey, AUKey},
             {opensalt, list_to_binary(Salt)},
             {scope, Scope},
             {expires, Expires}
@@ -153,3 +163,28 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+checkKey(LeftAUKey) ->
+  LeftAUKey =/= undefined
+    andalso
+    case aukey_server:get_aukey({aukey, LeftAUKey}) of
+      {ok, _} -> true;
+      _ -> false
+    end.
+
+%%
+%% checkScope(LeftScopeList, RightScopeList) ->
+%%   RightScopeList =:= []
+%%     orelse
+%%     RightScopeList =:= undefined
+%%     orelse
+%%     lists:foldl(
+%%       fun(RightScope, IsOk) -> IsOk andalso lists:member(RightScope, LeftScopeList) end,
+%%       true,
+%%       RightScopeList
+%%     ).
+%%
+%% checkLink(_DocJson, Link) ->
+%%   Link =:= undefined
+%%     orelse
+%%     true.

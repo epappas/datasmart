@@ -16,6 +16,7 @@
 %% gen_server callbacks
 -export([
   generate/1,
+  get_aukey/1,
   srp_essentials/1
 ]).
 
@@ -44,6 +45,8 @@ start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 generate(#aukey_generate{} = Token) -> gen_server:call(?MODULE, {generate, Token}).
+
+get_aukey({Type, Value}) -> gen_server:call(?MODULE, {get_aukey, {Type, Value}}).
 
 srp_essentials(Key) -> gen_server:call(?MODULE, {srp_essentials, Key}).
 
@@ -117,6 +120,20 @@ handle_call({generate, #aukey_generate{oukey = OUKey,
     {aukey, list_to_binary(AUKey)},
     {asecret, list_to_binary(ASecret)}
   ]}, State};
+
+handle_call({get_aukey, {aukey, AUkey}}, _From, State) ->
+  case couch:get(?couch_aukeys, AUkey) of
+    {error, Error} -> {error, Error};
+    {ok, DocJson} ->
+      {DocKVList} = DocJson,
+      {reply,
+        {ok, [
+          {aukey, proplists:get_value(<<"accesskey">>, DocKVList)},
+          {oukey, proplists:get_value(<<"key">>, DocKVList)},
+          {scope, proplists:get_value(<<"scope">>, DocKVList)}
+        ]}, State};
+    Error -> {error, Error}
+  end;
 
 handle_call({srp_essentials, Key}, _From, State) ->
   case couch:get(?couch_secrets, Key) of
