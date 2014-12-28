@@ -76,8 +76,8 @@ handle_call({generate, #oukey_generate{ukey = UKey,
 }}, _From, State) ->
 
   OSalt = srp_server:new_salt(),
-  OUKey = ds_util:hashPass(srp_server:new_salt(), OSalt, 2),
-  Secret = srp_server:new_salt(),
+  OUKey = srp_server:new_salt(),
+  Secret = ds_util:hashPass(srp_server:new_salt(), OSalt, 2),
 
   [OPrime, OGenerator] = srp_server:prime(UserPrimeBytes, UserGenerator),
   ODerivedKey = srp_server:derived_key(OSalt, OUKey, Secret, Factor),
@@ -88,8 +88,8 @@ handle_call({generate, #oukey_generate{ukey = UKey,
 
   couch:save(?couch_oukeys, {[
     {<<"_id">>, list_to_binary(OUKey)},
-    {<<"key">>, list_to_binary(UKey)},
-    {<<"email">>, list_to_binary(Email)},
+    {<<"key">>, UKey},
+    {<<"email">>, Email},
     {<<"openkey">>, list_to_binary(OUKey)},
     {<<"scope">>, jiffy:encode(?Scope_all)}
   ]}),
@@ -117,10 +117,7 @@ handle_call({generate, #oukey_generate{ukey = UKey,
     {<<"rsaBits">>, UserRSABits}
   ]}),
 
-  {reply, {ok, [
-    {oukey, list_to_binary(OUKey)},
-    {secret, list_to_binary(Secret)}
-  ]}, State};
+  {reply, {ok, #oukey_generate_rsp{oukey = list_to_binary(OUKey), secret = list_to_binary(Secret)}}, State};
 
 handle_call({get_ukey, {oukey, OUkey}}, _From, State) ->
   case couch:get(?couch_oukeys, OUkey) of

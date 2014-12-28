@@ -41,3 +41,7 @@
 -record(aukey_generate, {oukey, userPrimeBytes, userGenerator, factor, version, userRSABits}).
 -record(atoken_generate, {aukey, expires, scope = []}).
 
+-record(ukey_generate_rsp, {email, ukey}).
+-record(oukey_generate_rsp, {oukey, secret}).
+-record(aukey_generate_rsp, {aukey, asecret}).
+

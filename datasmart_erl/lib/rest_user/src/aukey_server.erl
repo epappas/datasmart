@@ -76,8 +76,8 @@ handle_call({generate, #aukey_generate{oukey = OUKey,
 }}, _From, State) ->
 
   ASalt = srp_server:new_salt(),
-  AUKey = ds_util:hashPass(srp_server:new_salt(), ASalt, 2),
-  ASecret = srp_server:new_salt(),
+  AUKey = srp_server:new_salt(),
+  ASecret = ds_util:hashPass(srp_server:new_salt(), ASalt, 2),
 
   [APrime, AGenerator] = srp_server:prime(UserPrimeBytes, UserGenerator),
   ADerivedKey = srp_server:derived_key(ASalt, AUKey, ASecret, Factor),
@@ -88,7 +88,7 @@ handle_call({generate, #aukey_generate{oukey = OUKey,
 
   couch:save(?couch_aukeys, {[
     {<<"_id">>, list_to_binary(AUKey)},
-    {<<"key">>, list_to_binary(OUKey)},
+    {<<"key">>, OUKey},
     {<<"accesskey">>, list_to_binary(AUKey)},
     {<<"scope">>, jiffy:encode(?Scope_all)}
   ]}),
@@ -116,10 +116,7 @@ handle_call({generate, #aukey_generate{oukey = OUKey,
     {<<"rsaBits">>, UserRSABits}
   ]}),
 
-  {reply, {ok, [
-    {aukey, list_to_binary(AUKey)},
-    {asecret, list_to_binary(ASecret)}
-  ]}, State};
+  {reply, {ok, #aukey_generate_rsp{aukey = list_to_binary(AUKey), asecret = list_to_binary(ASecret)}}, State};
 
 handle_call({get_aukey, {aukey, AUkey}}, _From, State) ->
   case couch:get(?couch_aukeys, AUkey) of

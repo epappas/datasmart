@@ -80,7 +80,7 @@ handle_call({generate, #ukey_generate{email = Email,
 
   MD5Key = hash_md5:build(Email),
 
-  UKey = ds_util:hashPass(MD5Key, srp_server:new_salt(), 2),
+  UKey = srp_server:new_salt(),
   Salt = srp_server:new_salt(),
   Password = srp_server:new_salt(), %% noone will know this password
 
@@ -129,19 +129,16 @@ handle_call({generate, #ukey_generate{email = Email,
     {<<"key">>, list_to_binary(UKey)}
   ]}),
 
-  {reply, {ok, [
-    {email, list_to_binary(Email)},
-    {ukey, list_to_binary(UKey)}
-  ]}, State};
+  {reply, {ok, #ukey_generate_rsp{email = list_to_binary(Email), ukey = list_to_binary(UKey)}}, State};
 
 handle_call({check, Email}, _From, State) ->
   MD5Key = hash_md5:build(Email),
   %% TODO implement HEAD req instead of GET
   case couch:get(?couch_md5keys, MD5Key) of
     {error, _Error} -> %% User Should not exist
-      {reply, {exist, {key, MD5Key}}, State};
+      {reply, {nonexist, {key, MD5Key}}, State};
     _ ->
-      {reply, {nonexist, {key, MD5Key}}, State}
+      {reply, {exist, {key, MD5Key}}, State}
   end;
 
 handle_call({get_ukey, {email, Email}}, _From, State) ->

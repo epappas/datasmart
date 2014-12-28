@@ -108,7 +108,7 @@ handle_call({register, Email}, _From, State) ->
     {nonexist, {key, MD5Key}} ->
 
       %% Generate a User
-      {ok, [{email, Email}, {ukey, UKey}]} =
+      {ok, #ukey_generate_rsp{ukey = UKey}} =
         ukey_server:generate(#ukey_generate{
           email = Email, userPrimeBytes = UserPrimeBytes,
           userGenerator = UserGenerator,
@@ -117,7 +117,7 @@ handle_call({register, Email}, _From, State) ->
         }),
 
       %% Generate an Open Key for this user
-      {ok, [{oukey, OUKey}, {secret, Secret}]} =
+      {ok, #oukey_generate_rsp{oukey = OUKey, secret = Secret}} =
         oukey_server:generate(#oukey_generate{
           ukey = UKey, email = Email,
           userPrimeBytes = UserPrimeBytes,
@@ -127,7 +127,7 @@ handle_call({register, Email}, _From, State) ->
         }),
 
       %% Generate an Access Key for this Open Key
-      {ok, [{aukey, AUKey}, {asecret, ASecret}]} =
+      {ok, #aukey_generate_rsp{aukey = AUKey, asecret = ASecret}} =
         aukey_server:generate(#aukey_generate{
           oukey = OUKey, userPrimeBytes = UserPrimeBytes,
           userGenerator = UserGenerator,
@@ -138,17 +138,17 @@ handle_call({register, Email}, _From, State) ->
       %% Store primary email as both Alias & source
       couch:save(?couch_user_alias, {[
         {<<"_id">>, list_to_binary(MD5Key)},
-        {<<"key">>, list_to_binary(UKey)},
+        {<<"key">>, UKey},
         {<<"email">>, list_to_binary(Email)},
         {<<"alias">>, list_to_binary(Email)}
       ]}),
 
       {reply, {ok, [
         {email, list_to_binary(Email)},
-        {oukey, list_to_binary(OUKey)},
-        {secret, list_to_binary(Secret)},
-        {aukey, list_to_binary(AUKey)},
-        {asecret, list_to_binary(ASecret)}
+        {oukey, OUKey},
+        {secret, Secret},
+        {aukey, AUKey},
+        {asecret, ASecret}
       ]}, State};
     _ -> {reply, {error, "Registration Failure"}, State}
   end;

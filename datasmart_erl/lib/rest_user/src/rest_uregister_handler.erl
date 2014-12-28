@@ -11,6 +11,7 @@
 -export([init/2]).
 -export([
   allowed_methods/2,
+  content_types_provided/2,
   content_types_accepted/2,
   forbidden/2,
   is_authorized/2,
@@ -60,13 +61,23 @@ forbidden(Req, State = #state{isAuthorized = IsAuthorized}) ->
 %% Handle a request for information.
 options(Req, State) -> {ok, Req, State}.
 
+%% FLOW: ALL[10] OR 406
+%% Return the list of content-types the resource provides.
+%% ProvideResource = iodata() | {stream, Fun} | {stream, Len, Fun} | {chunked, ChunkedFun}
+content_types_provided(Req, State) ->
+  NewState = State#state{state = types_provided},
+  {[{{<<"application">>, <<"json">>, '*'}, handle}], Req, NewState}.
+
 %% FLOW: ALL[15,17,19], POST[1,3,5], PUT[2], PATCH[4] THEN 201,204 OR 400
 %% Return the list of content-types the resource accepts.
 content_types_accepted(Req, State) ->
   NewState = State#state{state = types_accepted},
   {[{{<<"application">>, <<"json">>, '*'}, handle}], Req, NewState}.
 
-handle(Req, State = #state{method = <<"POST">>}) ->
+handle(Req, State = #state{method = <<"POST">>, state = types_provided}) ->
+  {cowboy_req:get(resp_body, Req), Req, State};
+
+handle(Req, State = #state{method = <<"POST">>, state = types_accepted}) ->
   {ok, JsonBin, _} = cowboy_req:body(Req),
 
   {QsKVList} = jiffy:decode(JsonBin),
