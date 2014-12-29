@@ -72,7 +72,7 @@ init([]) ->
 routing_dispatch() ->
   List = [
     root, index_key,
-    user,
+    user, user_srp_begin, user_srp_answer, user_srp_verify,
     user_oukey, user_oukey_srp_begin, user_oukey_srp_answer, user_oukey_srp_verify,
     files_oukey, files_oukey_key
   ],
@@ -90,28 +90,31 @@ route(index_key) ->
 route(user) ->
   {"/user", rest_uregister_handler, []};
 
-route(user_apiKey) ->
-  {"/user/apiKey", rest_oapikey_handler, []};
-
 route(user_srp_begin) ->
-  {"/user/srp/begin", rest_srpbegin_handler, []};
+  {"/user/_srp/begin", rest_srpbegin_handler, [{module, user}]};
 
 route(user_srp_answer) ->
-  {"/user/srp/answer", rest_srpanswer_handler, []};
+  {"/user/_srp/answer", rest_srpanswer_handler, [{module, user}]};
 
 route(user_srp_verify) ->
-  {"/user/srp/verify", rest_srpverify_handler, []};
+  {"/user/_srp/verify", rest_srpverify_handler, [{module, user}]};
 
 route(user_oukey) ->
-  {"/user/:oukey", rest_ouserkey_handler, []};
+  {"/user/_oukey/:oukey", rest_ouserkey_handler, []};
 
-route(user_oukey_apiKey) ->
-  {"/user/:oukey/apiKey", rest_oapikey_handler, []};
+route(user_oukey_srp_begin) ->
+  {"/user/_oukey/:oukey/_srp/begin", rest_srpbegin_handler, [{module, oukey}]};
 
-route(files) ->
-  {"/user/:oukey/files", files_handler, []};
+route(user_oukey_srp_answer) ->
+  {"/user/_oukey/:oukey/_srp/answer", rest_srpanswer_handler, [{module, oukey}]};
 
-route(files_key) ->
-  {"/user/:oukey/files/:filekey", files_handler, []}.
+route(user_oukey_srp_verify) ->
+  {"/user/_oukey/:oukey/_srp/verify", rest_srpverify_handler, [{module, oukey}]};
+
+route(files_oukey) ->
+  {"/user/_oukey/:oukey/files", files_handler, []};
+
+route(files_oukey_key) ->
+  {"/user/_oukey/:oukey/files/:filekey", files_handler, []}.
 
 
