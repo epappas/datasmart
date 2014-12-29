@@ -15,7 +15,6 @@
   register/1,
   generate/1,
   getuser/1,
-  srp_essentials/1,
   updateprofile/2,
   encrypt/3,
   dencrypt/3
@@ -47,8 +46,6 @@ register(Email) -> gen_server:call(?MODULE, {register, Email}).
 generate({KeyType, Params}) -> gen_server:call(?MODULE, {generate, {KeyType, Params}}).
 
 getuser(Ukey) -> gen_server:call(?MODULE, {getuser, Ukey}).
-
-srp_essentials(Ukey) -> gen_server:call(?MODULE, {srp_essentials, Ukey}).
 
 updateprofile(Ukey, KeyValList) -> gen_server:call(?MODULE, {updateprofile, Ukey, KeyValList}).
 
