@@ -75,6 +75,7 @@ handle_call({generate, #oukey_generate{ukey = UKey,
   version = Version, userRSABits = UserRSABits
 }}, _From, State) ->
 
+  SrpSalt = srp_server:new_salt(),
   OSalt = srp_server:new_salt(),
   OUKey = srp_server:new_salt(),
   Secret = ds_util:hashPass(srp_server:new_salt(), OSalt, 2),
@@ -101,6 +102,7 @@ handle_call({generate, #oukey_generate{ukey = UKey,
   couch:save(?couch_secrets, {[
     {<<"_id">>, list_to_binary(OUKey)},
     {<<"key">>, list_to_binary(OUKey)},
+    {<<"srpsalt">>, base64:encode(SrpSalt)},
     {<<"verifier">>, base64:encode(OVerifier)},
     {<<"prime">>, base64:encode(OPrime)},
     {<<"generator">>, OGenerator},

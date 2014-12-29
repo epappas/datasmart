@@ -80,6 +80,7 @@ handle_call({generate, #ukey_generate{email = Email,
 
   MD5Key = hash_md5:build(Email),
 
+  SrpSalt = srp_server:new_salt(),
   UKey = srp_server:new_salt(),
   Salt = srp_server:new_salt(),
   Password = srp_server:new_salt(), %% noone will know this password
@@ -107,6 +108,7 @@ handle_call({generate, #ukey_generate{email = Email,
   couch:save(?couch_secrets, {[
     {<<"_id">>, list_to_binary(UKey)},
     {<<"key">>, list_to_binary(UKey)},
+    {<<"srpsalt">>, base64:encode(SrpSalt)},
     {<<"verifier">>, base64:encode(Verifier)},
     {<<"prime">>, base64:encode(Prime)},
     {<<"generator">>, Generator},

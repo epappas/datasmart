@@ -106,7 +106,7 @@ handle_call({begin_srp, UKey}, _From, State) ->
     undefined -> {error, undefined};
     {error, Error} -> {error, Error};
     {ok, EssentialsKVList} ->
-      Salt = base64:decode(proplists:get_value(<<"salt">>, EssentialsKVList)), %% get salt of user
+      Salt = base64:decode(proplists:get_value(<<"srpsalt">>, EssentialsKVList)), %% get salt of user
       Version = binary_to_atom(proplists:get_value(<<"version">>, EssentialsKVList), utf8), %% get User's Version
       Verifier = base64:decode(proplists:get_value(<<"verifier">>, EssentialsKVList)), %% Get User's Verifier
       UserPrimeBytes = proplists:get_value(<<"userPrimeBytes">>, EssentialsKVList), %% get Prime of user
@@ -120,13 +120,13 @@ handle_call({begin_srp, UKey}, _From, State) ->
 
       {reply, {ok, [
         {sesRef, base64:encode(Ref)},
-        {salt, base64:encode(Salt)},
-        {privKey, base64:encode(PrivKey)},
-        {pubKey, base64:encode(PubKey)},
-        {prime, base64:encode(Prime)},
-        {generator, Generator},
-        {version, Version},
-        {verifier, base64:encode(Verifier)}
+        {salt, base64:encode(Salt)}
+        %% {privKey, base64:encode(PrivKey)},
+        %% {pubKey, base64:encode(PubKey)},
+        %% {prime, base64:encode(Prime)},
+        %% {generator, Generator},
+        %% {version, Version},
+        %% {verifier, base64:encode(Verifier)}
       ]}, State};
     X -> {error, X}
   end;
