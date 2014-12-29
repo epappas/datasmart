@@ -53,7 +53,7 @@ start_link() ->
 %%   {verifier, Verifier} v = g^x
 %% ]}
 begin_srp({email, Email}) ->
-  {ok, UKey} = user_server:getukey(Email),
+  {ok, UKey} = ukey_server:get_ukey({email, Email}),
   gen_server:call(?MODULE, {begin_srp, UKey});
 begin_srp({oukey, OUKey}) ->
   {ok, UKey} = user_server:match_ouKey(OUKey),
@@ -102,7 +102,7 @@ init([]) -> {ok, #state{}}.
 
 handle_call({begin_srp, UKey}, _From, State) ->
   Ref = uuid:to_string(uuid:uuid3(uuid:uuid4(), uuid:to_string(uuid:uuid1()))),
-  case user_server:srp_essentials(UKey) of
+  case ukey_server:srp_essentials(UKey) of
     undefined -> {error, undefined};
     {error, Error} -> {error, Error};
     {ok, EssentialsKVList} ->
