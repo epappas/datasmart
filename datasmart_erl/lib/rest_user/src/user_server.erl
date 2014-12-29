@@ -13,7 +13,7 @@
 %% API
 -export([start_link/0,
   register/1,
-  add_aukey/3,
+  generate/1,
   getuser/1,
   srp_essentials/1,
   updateprofile/2,
@@ -44,7 +44,7 @@ start_link() ->
 
 register(Email) -> gen_server:call(?MODULE, {register, Email}).
 
-add_aukey(Ukey, AUKey, Secret) -> gen_server:call(?MODULE, {addaukey, Ukey, AUKey, Secret}).
+generate({KeyType, Params}) -> gen_server:call(?MODULE, {generate, {KeyType, Params}}).
 
 getuser(Ukey) -> gen_server:call(?MODULE, {getuser, Ukey}).
 
@@ -151,6 +151,51 @@ handle_call({register, Email}, _From, State) ->
         {asecret, ASecret}
       ]}, State};
     _ -> {reply, {error, "Registration Failure"}, State}
+  end;
+
+handle_call({generate, {oukey, Params}}, _From, State) ->
+  UKey = proplists:get_value(ukey, Params),
+  Email = proplists:get_value(email, Params),
+
+  {ok, #oukey_generate_rsp{oukey = OUKey, secret = Secret}} =
+    oukey_server:generate(#oukey_generate{
+      ukey = UKey, email = Email,
+      userPrimeBytes = ?User_Prime_Bytes,
+      userGenerator = ?User_Generator,
+      factor = ?Factor, version = ?User_SRP_Version,
+      userRSABits = ?User_RSA_Bits
+    }),
+
+  {reply, {ok, [
+    {email, list_to_binary(Email)},
+    {oukey, OUKey},
+    {secret, Secret}
+  ]}, State};
+
+handle_call({generate, {aukey, Params}}, _From, State) ->
+  OUKey = proplists:get_value(oukey, Params),
+
+  {ok, #aukey_generate_rsp{aukey = AUKey, asecret = ASecret}} =
+    aukey_server:generate(#aukey_generate{
+      oukey = OUKey, userPrimeBytes = ?User_Prime_Bytes,
+      userGenerator = ?User_Generator,
+      factor = ?Factor, version = ?User_SRP_Version,
+      userRSABits = ?User_RSA_Bits
+    }),
+
+  {reply, {ok, [
+    {aukey, AUKey},
+    {asecret, ASecret}
+  ]}, State};
+
+handle_call({generate, {atoken, Params}}, _From, State) ->
+  AUKey = proplists:get_value(aukey, Params),
+  Scope = proplists:get_value(scope, Params, []),
+  Expires = proplists:get_value(expires, Params, ?Default_Atoken_Expiration),
+
+  case atoken_server:generate(#atoken_generate{aukey = AUKey, scope = Scope, expires = Expires}) of
+    {ok, ResultKVList} -> {reply, {ok, ResultKVList}, State};
+    Error -> {reply, {error, Error}, State}
   end;
 
 handle_call({getuser, Ukey}, _From, State) ->

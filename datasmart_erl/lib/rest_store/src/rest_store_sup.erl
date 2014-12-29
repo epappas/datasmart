@@ -72,8 +72,9 @@ init([]) ->
 routing_dispatch() ->
   List = [
     root, index_key,
-    user, user_apiKey, user_srp_begin, user_srp_answer, user_srp_verify, user_oukey, user_oukey_apiKey,
-    files, files_key
+    user,
+    user_oukey, user_oukey_srp_begin, user_oukey_srp_answer, user_oukey_srp_verify,
+    files_oukey, files_oukey_key
   ],
   cowboy_router:compile([
     %% {URIHost, list({URIPath, Handler, Opts})}
