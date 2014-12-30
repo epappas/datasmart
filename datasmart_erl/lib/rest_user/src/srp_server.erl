@@ -54,11 +54,12 @@ start_link() ->
 %% ]}
 begin_srp({email, Email}) ->
   {ok, UKey} = ukey_server:get_ukey({email, Email}),
-  gen_server:call(?MODULE, {begin_srp, UKey});
+  gen_server:call(?MODULE, {begin_srp, {ukey, UKey}});
 begin_srp({oukey, OUKey}) ->
-  {ok, UKey} = user_server:match_ouKey(OUKey),
-  gen_server:call(?MODULE, {begin_srp, UKey});
-begin_srp({ukey, UKey}) -> gen_server:call(?MODULE, {begin_srp, UKey}).
+  %% {ok, UKey} = oukey_server:get_ukey({oukey, OUKey}),
+  gen_server:call(?MODULE, {begin_srp, {oukey, OUKey}});
+begin_srp({aukey, AUKey}) -> gen_server:call(?MODULE, {begin_srp, {aukey, AUKey}});
+begin_srp({ukey, UKey}) -> gen_server:call(?MODULE, {begin_srp, {ukey, UKey}}).
 
 verifier(Generator, DerivedKey, Prime) -> crypto:mod_pow(Generator, DerivedKey, Prime).
 
@@ -100,9 +101,17 @@ compute_key(client, {serverPub, ServerPub}, SrpSesList) ->
 
 init([]) -> {ok, #state{}}.
 
-handle_call({begin_srp, UKey}, _From, State) ->
-  Ref = uuid:to_string(uuid:uuid3(uuid:uuid4(), uuid:to_string(uuid:uuid1()))),
-  case ukey_server:srp_essentials(UKey) of
+handle_call({begin_srp, {Type, Key}}, _From, State) ->
+  Ref = ds_util:uuid(), %% TODO store this
+
+  Essentials =
+    case Type of
+      aukey -> aukey_server:srp_essentials(Key);
+      oukey -> oukey_server:srp_essentials(Key);
+      ukey -> ukey_server:srp_essentials(Key)
+    end,
+
+  case Essentials of
     undefined -> {error, undefined};
     {error, Error} -> {error, Error};
     {ok, EssentialsKVList} ->
@@ -120,9 +129,9 @@ handle_call({begin_srp, UKey}, _From, State) ->
 
       {reply, {ok, [
         {sesRef, base64:encode(Ref)},
-        {salt, base64:encode(Salt)}
+        {salt, base64:encode(Salt)},
         %% {privKey, base64:encode(PrivKey)},
-        %% {pubKey, base64:encode(PubKey)},
+        {pubKey, base64:encode(PubKey)}
         %% {prime, base64:encode(Prime)},
         %% {generator, Generator},
         %% {version, Version},

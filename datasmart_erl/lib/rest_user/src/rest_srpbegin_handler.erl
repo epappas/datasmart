@@ -18,7 +18,7 @@ init(Req, Opts) ->
   Module = proplists:get_value(module, Opts),
   case Module =:= undefined of
     true -> {ok, Req, []};
-    false -> handle(Req, #state{})
+    false -> handle(Req, #state{module = Module})
   end.
 
 handle(Req, #state{} = State) ->
@@ -27,7 +27,7 @@ handle(Req, #state{} = State) ->
   {ok, Req2} = process(Req, NewState),
   {ok, Req2, []}.
 
-process(Req, #state{method = <<"POST">>} = _State) ->
+process(Req, #state{method = <<"POST">>, module = user} = _State) ->
   {ok, Params, Req2} = cowboy_req:body_qs(Req),
 
   EmailBin = proplists:get_value(<<"email">>, Params),
@@ -37,20 +37,54 @@ process(Req, #state{method = <<"POST">>} = _State) ->
     EmailBin ->
       Email = binary:bin_to_list(EmailBin),
 
-      case handle_query({srp_begin, Email}, Req2) of
-        {ok, Resp, _} -> end_with_success({Resp}, Req2);
-        _ -> end_with_failure(400, list_to_binary("Uknown Error"), Req)
+      case srp_server:begin_srp({email, Email}) of
+        {ok, ResultKVList} ->
+          end_with_success({ResultKVList}, Req2);
+        {error, _Error} ->
+          end_with_failure(400, list_to_binary("Uknown Error"), Req);
+        _X -> end_with_failure(400, list_to_binary("Uknown Error"), Req)
+      end
+  end;
+
+process(Req, #state{method = <<"POST">>, module = oukey} = _State) ->
+  {ok, Params, Req2} = cowboy_req:body_qs(Req),
+
+  OUKeyBin = proplists:get_value(<<"oukey">>, Params),
+
+  case OUKeyBin of
+    undefined -> end_with_failure(400, list_to_binary("No Valid Arguments"), Req);
+    OUKeyBin ->
+      OUKey = binary:bin_to_list(OUKeyBin),
+
+      case srp_server:begin_srp({oukey, OUKey}) of
+        {ok, ResultKVList} ->
+          end_with_success({ResultKVList}, Req2);
+        {error, _Error} ->
+          end_with_failure(400, list_to_binary("Uknown Error"), Req);
+        _X -> end_with_failure(400, list_to_binary("Uknown Error"), Req)
+      end
+  end;
+
+process(Req, #state{method = <<"POST">>, module = aukey} = _State) ->
+  {ok, Params, Req2} = cowboy_req:body_qs(Req),
+
+  AUKeyBin = proplists:get_value(<<"aukey">>, Params),
+
+  case AUKeyBin of
+    undefined -> end_with_failure(400, list_to_binary("No Valid Arguments"), Req);
+    AUKeyBin ->
+      AUKey = binary:bin_to_list(AUKeyBin),
+
+      case srp_server:begin_srp({aukey, AUKey}) of
+        {ok, ResultKVList} ->
+          end_with_success({ResultKVList}, Req2);
+        {error, _Error} ->
+          end_with_failure(400, list_to_binary("Uknown Error"), Req);
+        _X -> end_with_failure(400, list_to_binary("Uknown Error"), Req)
       end
   end;
 
 process(_, Req) -> end_with_failure(405, list_to_binary("Method not allowed"), Req).
-
-handle_query({srp_begin, Email}, Req) ->
-  case srp_server:begin_srp({email, Email}) of
-    {ok, ResultKVList} -> {ok, ResultKVList, Req};
-    {error, Error} -> {error, Error, Req};
-    X -> {error, X, Req}
-  end.
 
 end_with_success(Message, Req) -> {ok, echo(200, jiffy:encode(Message), Req)}.
 
