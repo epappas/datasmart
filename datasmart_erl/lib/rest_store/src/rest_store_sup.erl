@@ -74,9 +74,8 @@ routing_dispatch() ->
     root, index_key,
     user, user_srp_begin, user_srp_answer, user_srp_verify,
     user_oukey, user_oukey_srp_begin, user_oukey_srp_answer, user_oukey_srp_verify,
-    files_oukey, files_oukey_key,
     user_aukey, user_aukey_srp_begin, user_aukey_srp_answer, user_aukey_srp_verify,
-    files_aukey, files_aukey_key
+    files, files_key
   ],
   cowboy_router:compile([
     %% {URIHost, list({URIPath, Handler, Opts})}
@@ -108,7 +107,7 @@ route(user_srp_verify) ->
 %% oukey
 %% =========================================
 route(user_oukey) ->
-  {"/user/_oukey/:oukey", rest_ouserkey_handler, []};
+  {"/user/_oukey/:oukey", rest_oukey_handler, []};
 
 route(user_oukey_srp_begin) ->
   {"/user/_oukey/_srp/begin", rest_srpbegin_handler, [{module, oukey}]};
@@ -119,18 +118,9 @@ route(user_oukey_srp_answer) ->
 route(user_oukey_srp_verify) ->
   {"/user/_oukey/_srp/verify", rest_srpverify_handler, [{module, oukey}]};
 
-route(files_oukey) ->
-  {"/user/_oukey/:oukey/files", files_handler, []};
-
-route(files_oukey_key) ->
-  {"/user/_oukey/:oukey/files/:filekey", files_handler, []};
-
 %% =========================================
 %% aukey
 %% =========================================
-route(user_aukey) ->
-  {"/user/_aukey/:aukey", rest_aukey_handler, []};
-
 route(user_aukey_srp_begin) ->
   {"/user/_aukey/_srp/begin", rest_srpbegin_handler, [{module, aukey}]};
 
@@ -140,10 +130,11 @@ route(user_aukey_srp_answer) ->
 route(user_aukey_srp_verify) ->
   {"/user/_aukey/_srp/verify", rest_srpverify_handler, [{module, aukey}]};
 
-route(files_aukey) ->
-  {"/user/_aukey/:aukey/files", files_handler, []};
+%% =========================================
+%% files
+%% =========================================
+route(files) ->
+  {"/user/:type/:key/files", files_handler, []};
 
-route(files_aukey_key) ->
-  {"/user/_aukey/:aukey/files/:filekey", files_handler, []}.
-
-
+route(files_key) ->
+  {"/user/:type/:key/files/:filekey", files_handler, []}.

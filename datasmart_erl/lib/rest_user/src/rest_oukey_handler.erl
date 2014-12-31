@@ -5,7 +5,7 @@
 %%%
 %%% @end
 %%%-------------------------------------------------------------------
--module(rest_ouserkey_handler).
+-module(rest_oukey_handler).
 -author("evangelosp").
 
 -export([init/2]).
