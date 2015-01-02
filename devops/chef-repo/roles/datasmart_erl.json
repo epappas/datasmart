@@ -9,7 +9,14 @@
 
     },
     "run_list": [
+        "recipe[apt]",
+        "recipe[build-essential]",
+        "recipe[openssl]",
+        "recipe[erlang]",
+        "recipe[git]",
         "recipe[datasmart_erl]",
-        "recipe[couchdb]"
+        "recipe[couchdb]",
+        "recipe[redisio]",
+        "recipe[nodejs]"
     ]
 }
