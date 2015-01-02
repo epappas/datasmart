@@ -13,3 +13,5 @@ depends 'couchdb'
 depends 'nodejs'
 depends 'redisio'
 depends 'chef-client'
+depends 'git'
+

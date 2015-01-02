@@ -132,20 +132,17 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
         # Chef Provisioner
         # ==========================================
-        config.vm.provision :chef_solo do |chef|
-          chef.node_name          = vm_name
-          chef.provisioning_path  = "./devops/chef-repo"
+        config.vm.provision "chef_solo" do |chef|
+          # chef.node_name          = vm_name
+          chef.provisioning_path  = "/tmp/vagrant-chef"
           chef.cookbooks_path     = "./devops/chef-repo/cookbooks"
           chef.roles_path         = "./devops/chef-repo/roles"
-          chef.data_bags_path     = "./devops/chef-repo/roles"
+          chef.data_bags_path     = "./devops/chef-repo/data_bags"
           chef.environments_path  = "./devops/chef-repo/environments"
-          chef.environment        = $ENVIRONMENTS[i]
+          # chef.environment        = $ENVIRONMENTS[i]
           chef.synced_folder_type = "nfs"
 
-          chef.add_recipe         "datasmart_erl"
-          chef.add_recipe         "couchdb"
-          chef.chef.add_role      "vagrant"
-          chef.chef.add_role      node[:hostname]
+          chef.add_role           "datasmart_erl"
         end
       end # config.vm.define
     end # $num_instances loop

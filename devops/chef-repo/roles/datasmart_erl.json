@@ -1,0 +1,15 @@
+{
+    "name": "datasmart_erl",
+    "chef_type": "role",
+    "json_class": "Chef::Role",
+    "description": "datasmart_erl base server",
+    "override_attributes": {},
+    "default_attributes": {},
+    "env_run_lists": {
+
+    },
+    "run_list": [
+        "recipe[datasmart_erl]",
+        "recipe[couchdb]"
+    ]
+}
