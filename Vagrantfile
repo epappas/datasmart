@@ -130,6 +130,15 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         node_config.vm.synced_folder "./openapi",         "/app/openapi",       :id => "vagrant-openapi",        :nfs => true
         node_config.vm.synced_folder "./opentests",       "/app/opentests",     :id => "vagrant-opentests",      :nfs => true
 
+        # Chef Provisioner
+        # ==========================================
+        config.vm.provision :chef_client do |chef|
+          chef.provisioning_path = "/app/devops/chef-repo"
+          chef.chef_server_url = "https://api.opscode.com/organizations/evalonlabs"
+          chef.validation_key_path = "/app/devops/chef-repo/.chef/evalonlabs-validator.pem"
+          chef.validation_client_name = "evalonlabs-validator"
+          chef.node_name = vm_name
+        end
       end # config.vm.define
     end # $num_instances loop
   end # nodes loop
