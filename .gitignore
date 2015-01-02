@@ -26,3 +26,4 @@ experimental/*
 .key
 *.save
 .save
+devops/chef-solo/
