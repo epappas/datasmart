@@ -38,13 +38,13 @@ nodes = [
 # Key Finder
 # ==========================================
 if File.exists?(rsa_key)
-  $key = rsa_key
-  $key_pub = rsa_key + '.pub'
-  $keyBaseName = File.basename($key)
+  $key          = rsa_key
+  $key_pub      = rsa_key + '.pub'
+  $keyBaseName  = File.basename($key)
 elsif  File.exists?(dsa_key)
-  $key = dsa_key
-  $key_pub = rsa_key + '.pub'
-  $keyBaseName = File.basename($key)
+  $key          = dsa_key
+  $key_pub      = rsa_key + '.pub'
+  $keyBaseName  = File.basename($key)
 end
 
 # Config Injection
@@ -66,18 +66,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
         # Set the box
         # ==========================================
-        node_config.vm.box = "trusty64"
-        node_config.vm.box_url = "https://vagrantcloud.com/ubuntu/boxes/trusty64/versions/14.04/providers/virtualbox.box"
-        node_config.vm.hostname = "%s.%s" % [vm_name, $DOMAIN]
+        node_config.vm.box        = "trusty64"
+        node_config.vm.box_url    = "https://vagrantcloud.com/ubuntu/boxes/trusty64/versions/14.04/providers/virtualbox.box"
+        node_config.vm.hostname   = "%s.%s" % [vm_name, $DOMAIN]
 
         # virtualbox configs
         # ==========================================
         node_config.vm.provider :virtualbox do |v|
           v.check_guest_additions = false
-          v.functional_vboxsf = false
-          v.gui = $vb_gui
-          v.memory = $vb_memory
-          v.cpus = $vb_cpus
+          v.functional_vboxsf     = false
+          v.gui                   = $vb_gui
+          v.memory                = $vb_memory
+          v.cpus                  = $vb_cpus
         end
 
         # plugin conflict
@@ -132,12 +132,20 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
         # Chef Provisioner
         # ==========================================
-        config.vm.provision :chef_client do |chef|
-          chef.provisioning_path = "/app/devops/chef-repo"
-          chef.chef_server_url = "https://api.opscode.com/organizations/evalonlabs"
-          chef.validation_key_path = "/app/devops/chef-repo/.chef/evalonlabs-validator.pem"
-          chef.validation_client_name = "evalonlabs-validator"
-          chef.node_name = vm_name
+        config.vm.provision :chef_solo do |chef|
+          chef.node_name          = vm_name
+          chef.provisioning_path  = "./devops/chef-repo"
+          chef.cookbooks_path     = "./devops/chef-repo/cookbooks"
+          chef.roles_path         = "./devops/chef-repo/roles"
+          chef.data_bags_path     = "./devops/chef-repo/roles"
+          chef.environments_path  = "./devops/chef-repo/environments"
+          chef.environment        = $ENVIRONMENTS[i]
+          chef.synced_folder_type = "nfs"
+
+          chef.add_recipe         "datasmart_erl"
+          chef.add_recipe         "couchdb"
+          chef.chef.add_role      "vagrant"
+          chef.chef.add_role      node[:hostname]
         end
       end # config.vm.define
     end # $num_instances loop
