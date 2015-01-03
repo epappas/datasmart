@@ -27,3 +27,6 @@ experimental/*
 *.save
 .save
 devops/chef-solo/
+.ssh/
+.pub
+.pem
