@@ -1,6 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @author evangelosp
-%%% @copyright (C) 2014, <COMPANY>
+%%% @copyright (C) 2014, evalonlabs
 %%% @doc
 %%%
 %%% @end
