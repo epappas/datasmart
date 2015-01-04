@@ -125,6 +125,9 @@ route(user_oukey_srp_verify) ->
 %% =========================================
 %% aukey
 %% =========================================
+route(user_aukey) ->
+  {"/user/_aukey", rest_oukey_handler, []};
+
 route(user_aukey_srp_begin) ->
   {"/user/_aukey/_srp/begin", rest_srpbegin_handler, [{module, aukey}]};
 
