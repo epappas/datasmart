@@ -8,6 +8,8 @@
 -module(rest_srpverify_handler).
 -author("evangelosp").
 
+-include("user_records.hrl").
+
 -export([init/2]).
 -export([handle/2]).
 -export([terminate/3]).
@@ -31,22 +33,25 @@ process(Req, #state{method = <<"POST">>, module = user} = _State) ->
   {ok, Params, Req2} = cowboy_req:body_qs(Req),
 
   M1Bin = proplists:get_value(<<"m1">>, Params),
-  SrpStateJSONBin = proplists:get_value(<<"srpstate">>, Params, <<"{}">>),
+  SesRef = proplists:get_value(<<"sesRef">>, Params),
 
   case M1Bin of
     undefined -> end_with_failure(400, "No Valid Arguments", Req);
     M1Bin ->
       M1 = binary:bin_to_list(M1Bin),
-      SrpStateJSON = binary:bin_to_list(SrpStateJSONBin),
-      {SrpStateKVList} = jiffy:decode(SrpStateJSON),
-      SKey = proplists:get_value(skey, SrpStateKVList),
 
-      case M1 =:= SKey of
-        true ->
-          NewSrpStateKVList = lists:append([{verified, true}], SrpStateKVList),
-          end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
-        _ ->
-          end_with_failure(400, "Uknown Error", Req)
+      case ecache:get(?CACHE_TABLE, SesRef) of
+        {ok, SrpStateKVList} ->
+          SKey = proplists:get_value(skey, SrpStateKVList),
+
+          case M1 =:= SKey of
+            true ->
+              NewSrpStateKVList = lists:append([{verified, true}], SrpStateKVList),
+              end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
+            _ ->
+              end_with_failure(400, "Uknown Error", Req)
+          end;
+        _ -> end_with_failure(400, "Uknown Error", Req)
       end
   end;
 
@@ -54,22 +59,24 @@ process(Req, #state{method = <<"POST">>, module = oukey} = _State) ->
   {ok, Params, Req2} = cowboy_req:body_qs(Req),
 
   M1Bin = proplists:get_value(<<"m1">>, Params),
-  SrpStateJSONBin = proplists:get_value(<<"srpstate">>, Params, <<"{}">>),
+  SesRef = proplists:get_value(<<"sesRef">>, Params),
 
   case M1Bin of
     undefined -> end_with_failure(400, "No Valid Arguments", Req);
     M1Bin ->
       M1 = binary:bin_to_list(M1Bin),
-      SrpStateJSON = binary:bin_to_list(SrpStateJSONBin),
-      {SrpStateKVList} = jiffy:decode(SrpStateJSON),
-      SKey = proplists:get_value(skey, SrpStateKVList),
+      case ecache:get(?CACHE_TABLE, SesRef) of
+        {ok, SrpStateKVList} ->
+          SKey = proplists:get_value(skey, SrpStateKVList),
 
-      case M1 =:= SKey of
-        true ->
-          NewSrpStateKVList = lists:append([{verified, true}], SrpStateKVList),
-          end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
-        _ ->
-          end_with_failure(400, "Uknown Error", Req)
+          case M1 =:= SKey of
+            true ->
+              NewSrpStateKVList = lists:append([{verified, true}], SrpStateKVList),
+              end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
+            _ ->
+              end_with_failure(400, "Uknown Error", Req)
+          end;
+        _ -> end_with_failure(400, "Uknown Error", Req)
       end
   end;
 
@@ -77,22 +84,25 @@ process(Req, #state{method = <<"POST">>, module = aukey} = _State) ->
   {ok, Params, Req2} = cowboy_req:body_qs(Req),
 
   M1Bin = proplists:get_value(<<"m1">>, Params),
-  SrpStateJSONBin = proplists:get_value(<<"srpstate">>, Params, <<"{}">>),
+  SesRef = proplists:get_value(<<"sesRef">>, Params),
 
   case M1Bin of
     undefined -> end_with_failure(400, "No Valid Arguments", Req);
     M1Bin ->
       M1 = binary:bin_to_list(M1Bin),
-      SrpStateJSON = binary:bin_to_list(SrpStateJSONBin),
-      {SrpStateKVList} = jiffy:decode(SrpStateJSON),
-      SKey = proplists:get_value(skey, SrpStateKVList),
 
-      case M1 =:= SKey of
-        true ->
-          NewSrpStateKVList = lists:append([{verified, true}], SrpStateKVList),
-          end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
-        _ ->
-          end_with_failure(400, "Uknown Error", Req)
+      case ecache:get(?CACHE_TABLE, SesRef) of
+        {ok, SrpStateKVList} ->
+          SKey = proplists:get_value(skey, SrpStateKVList),
+
+          case M1 =:= SKey of
+            true ->
+              NewSrpStateKVList = lists:append([{verified, true}], SrpStateKVList),
+              end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
+            _ ->
+              end_with_failure(400, "Uknown Error", Req)
+          end;
+        _ -> end_with_failure(400, "Uknown Error", Req)
       end
   end;
 

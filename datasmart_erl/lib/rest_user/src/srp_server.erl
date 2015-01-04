@@ -130,12 +130,12 @@ handle_call({begin_srp, {Type, Key}}, _From, State) ->
       {reply, {ok, [
         {sesRef, base64:encode(Ref)},
         {salt, base64:encode(Salt)},
-        %% {privKey, base64:encode(PrivKey)},
-        {pubKey, base64:encode(PubKey)}
-        %% {prime, base64:encode(Prime)},
-        %% {generator, Generator},
-        %% {version, Version},
-        %% {verifier, base64:encode(Verifier)}
+        {privKey, base64:encode(PrivKey)},
+        {pubKey, base64:encode(PubKey)},
+        {prime, base64:encode(Prime)},
+        {generator, Generator},
+        {version, Version},
+        {verifier, base64:encode(Verifier)}
       ]}, State};
     X -> {error, X}
   end;

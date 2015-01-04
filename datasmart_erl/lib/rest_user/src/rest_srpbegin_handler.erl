@@ -12,6 +12,8 @@
 -export([handle/2]).
 -export([terminate/3]).
 
+-include("user_records.hrl").
+
 -record(state, {module, method}).
 
 init(Req, Opts) ->
@@ -39,7 +41,7 @@ process(Req, #state{method = <<"POST">>, module = user} = _State) ->
 
       case srp_server:begin_srp({email, Email}) of
         {ok, ResultKVList} ->
-          end_with_success({ResultKVList}, Req2);
+          end_with_success({manage_session(ResultKVList)}, Req2);
         {error, _Error} ->
           end_with_failure(400, list_to_binary("Uknown Error"), Req);
         _X -> end_with_failure(400, list_to_binary("Uknown Error"), Req)
@@ -58,7 +60,7 @@ process(Req, #state{method = <<"POST">>, module = oukey} = _State) ->
 
       case srp_server:begin_srp({oukey, OUKey}) of
         {ok, ResultKVList} ->
-          end_with_success({ResultKVList}, Req2);
+          end_with_success({manage_session(ResultKVList)}, Req2);
         {error, _Error} ->
           end_with_failure(400, list_to_binary("Uknown Error"), Req);
         _X -> end_with_failure(400, list_to_binary("Uknown Error"), Req)
@@ -77,7 +79,7 @@ process(Req, #state{method = <<"POST">>, module = aukey} = _State) ->
 
       case srp_server:begin_srp({aukey, AUKey}) of
         {ok, ResultKVList} ->
-          end_with_success({ResultKVList}, Req2);
+          end_with_success({manage_session(ResultKVList)}, Req2);
         {error, _Error} ->
           end_with_failure(400, list_to_binary("Uknown Error"), Req);
         _X -> end_with_failure(400, list_to_binary("Uknown Error"), Req)
@@ -100,6 +102,13 @@ echo(Status, Echo, Req) ->
     {<<"content-type">>, <<"application/json; charset=utf-8">>},
     {<<"server">>, <<"myinbox-datastore">>}
   ], Echo, Req).
+
+manage_session(SessionltKVList) ->
+  SesRef = proplists:get_value(sesRef, SessionltKVList),
+
+  ecache:put(?CACHE_TABLE, SesRef, SessionltKVList),
+
+  [{sesRef, SesRef}].
 
 terminate(_Reason, _Req, _State) ->
   ok.

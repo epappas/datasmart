@@ -8,6 +8,8 @@
 -module(rest_srpanswer_handler).
 -author("evangelosp").
 
+-include("user_records.hrl").
+
 -export([init/2]).
 -export([handle/2]).
 -export([terminate/3]).
@@ -31,21 +33,22 @@ process(Req, #state{method = <<"POST">>, module = user} = _State) ->
   {ok, Params, Req2} = cowboy_req:body_qs(Req),
 
   ClientPubBin = proplists:get_value(<<"clientPub">>, Params),
-  SrpStateJSONBin = proplists:get_value(<<"srpstate">>, Params),
+  SesRef = proplists:get_value(<<"sesRef">>, Params),
 
   case ClientPubBin of
     undefined -> end_with_failure(400, "No Valid Arguments", Req);
     ClientPubBin ->
       ClientPub = binary:bin_to_list(ClientPubBin),
-      SrpStateJSON = binary:bin_to_list(SrpStateJSONBin),
-      {SrpStateKVList} = jiffy:decode(SrpStateJSON),
 
-      case srp_server:compute_key(server, {clientPub, ClientPub}, SrpStateKVList) of
-        {ok, SKey, _} ->
-          NewSrpStateKVList = lists:append([{skey, SKey}], SrpStateKVList),
-          end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
-        _ ->
-          end_with_failure(400, "Uknown Error", Req)
+      case ecache:get(?CACHE_TABLE, SesRef) of
+        {ok, SrpStateKVList} ->
+          case srp_server:compute_key(server, {clientPub, ClientPub}, SrpStateKVList) of
+            {ok, SKey, _} ->
+              NewSrpStateKVList = lists:append([{skey, SKey}], SrpStateKVList),
+              end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
+            _ -> end_with_failure(400, "Uknown Error", Req)
+          end;
+        _ -> end_with_failure(400, "Uknown Error", Req)
       end
   end;
 
@@ -53,21 +56,22 @@ process(Req, #state{method = <<"POST">>, module = oukey} = _State) ->
   {ok, Params, Req2} = cowboy_req:body_qs(Req),
 
   ClientPubBin = proplists:get_value(<<"clientPub">>, Params),
-  SrpStateJSONBin = proplists:get_value(<<"srpstate">>, Params),
+  SesRef = proplists:get_value(<<"sesRef">>, Params),
 
   case ClientPubBin of
     undefined -> end_with_failure(400, "No Valid Arguments", Req);
     ClientPubBin ->
       ClientPub = binary:bin_to_list(ClientPubBin),
-      SrpStateJSON = binary:bin_to_list(SrpStateJSONBin),
-      {SrpStateKVList} = jiffy:decode(SrpStateJSON),
 
-      case srp_server:compute_key(server, {clientPub, ClientPub}, SrpStateKVList) of
-        {ok, SKey, _} ->
-          NewSrpStateKVList = lists:append([{skey, SKey}], SrpStateKVList),
-          end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
-        _ ->
-          end_with_failure(400, "Uknown Error", Req)
+      case ecache:get(?CACHE_TABLE, SesRef) of
+        {ok, SrpStateKVList} ->
+          case srp_server:compute_key(server, {clientPub, ClientPub}, SrpStateKVList) of
+            {ok, SKey, _} ->
+              NewSrpStateKVList = lists:append([{skey, SKey}], SrpStateKVList),
+              end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
+            _ -> end_with_failure(400, "Uknown Error", Req)
+          end;
+        _ -> end_with_failure(400, "Uknown Error", Req)
       end
   end;
 
@@ -75,21 +79,23 @@ process(Req, #state{method = <<"POST">>, module = aukey} = _State) ->
   {ok, Params, Req2} = cowboy_req:body_qs(Req),
 
   ClientPubBin = proplists:get_value(<<"clientPub">>, Params),
-  SrpStateJSONBin = proplists:get_value(<<"srpstate">>, Params),
+  SesRef = proplists:get_value(<<"sesRef">>, Params),
 
   case ClientPubBin of
     undefined -> end_with_failure(400, "No Valid Arguments", Req);
     ClientPubBin ->
       ClientPub = binary:bin_to_list(ClientPubBin),
-      SrpStateJSON = binary:bin_to_list(SrpStateJSONBin),
-      {SrpStateKVList} = jiffy:decode(SrpStateJSON),
 
-      case srp_server:compute_key(server, {clientPub, ClientPub}, SrpStateKVList) of
-        {ok, SKey, _} ->
-          NewSrpStateKVList = lists:append([{skey, SKey}], SrpStateKVList),
-          end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
-        _ ->
-          end_with_failure(400, "Uknown Error", Req)
+      case ecache:get(?CACHE_TABLE, SesRef) of
+        {ok, SrpStateKVList} ->
+          case srp_server:compute_key(server, {clientPub, ClientPub}, SrpStateKVList) of
+            {ok, SKey, _} ->
+              NewSrpStateKVList = lists:append([{skey, SKey}], SrpStateKVList),
+              end_with_success(jiffy:encode({NewSrpStateKVList}), Req2);
+            _ ->
+              end_with_failure(400, "Uknown Error", Req)
+          end;
+        _ -> end_with_failure(400, "Uknown Error", Req)
       end
   end;
 

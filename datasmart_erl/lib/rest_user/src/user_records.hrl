@@ -7,6 +7,8 @@
 %%%-------------------------------------------------------------------
 -author("evangelosp").
 
+-define(CACHE_TABLE, srb_session_tb).
+
 -define(Default_Atoken_Expiration, 30 * 24 * 60 * 60 * 1000). %% 30days in ms
 -define(User_RSA_Bits, 2048).
 -define(User_Prime_Bytes, 256).
