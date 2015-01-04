@@ -1,5 +1,19 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+#
+# Copyright 2015, evalonlabs
+#
+# Licensed under the Apache License, Version 2.0 (the 'License');
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an 'AS IS' BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 # ==========================================
 # MAIN Requirements & configurations
@@ -12,7 +26,7 @@ Vagrant.require_version ">= 1.6.0"
 CONFIG = File.join(File.dirname(__FILE__), "./devops/Vagrant-config.rb")
 VAGRANTFILE_API_VERSION = "2"
 
-$ENVIRONMENTS     = ['dev', 'test', 'production']
+$ENVIRONMENTS     = ['development', 'test', 'production']
 $DOMAIN           = 'local'
 
 $num_instances    = $ENVIRONMENTS.length
@@ -91,6 +105,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         ip = "%s%s" % [node[:ip], (i + 1)]
         config.vm.network "private_network", :ip => ip
 
+        config.vm.network "forwarded_port", :guest => 80,   :host => 8080, :auto_correct => true
+        config.vm.network "forwarded_port", :guest => 5984, :host => 5984, :auto_correct => true
+
         # ssh
         # ==========================================
         node_config.ssh.forward_agent = true
@@ -133,13 +150,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         # Chef Provisioner
         # ==========================================
         config.vm.provision "chef_solo" do |chef|
-          # chef.node_name          = vm_name
+          chef.node_name          = "vagrant"
           chef.provisioning_path  = "/tmp/vagrant-chef"
           chef.cookbooks_path     = "./devops/chef-repo/cookbooks"
           chef.roles_path         = "./devops/chef-repo/roles"
           chef.data_bags_path     = "./devops/chef-repo/data_bags"
           chef.environments_path  = "./devops/chef-repo/environments"
-          # chef.environment        = $ENVIRONMENTS[i]
+          chef.environment        = $ENVIRONMENTS[i]
           chef.synced_folder_type = "nfs"
 
           chef.add_role           "datasmart_erl"
