@@ -149,6 +149,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
         # Chef Provisioner
         # ==========================================
+        config.berkshelf.enabled = true
+        config.berkshelf.berksfile_path = "./devops/chef-repo/Berksfile"
+        # config.berkshelf.args = []
         config.vm.provision "chef_solo" do |chef|
           chef.node_name          = "vagrant"
           chef.provisioning_path  = "/tmp/vagrant-chef"
