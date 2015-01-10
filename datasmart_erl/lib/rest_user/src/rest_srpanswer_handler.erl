@@ -112,7 +112,7 @@ process(Req, #state{method = <<"POST">>, module = aukey} = _State) ->
       end
   end;
 
-process(_, Req) -> end_with_failure(405, list_to_binary("Method not allowed"), Req).
+process(Req, _) -> end_with_failure(405, list_to_binary("Method not allowed"), Req).
 
 end_with_success(Message, Req) -> {ok, echo(200, jiffy:encode(Message), Req)}.
 
