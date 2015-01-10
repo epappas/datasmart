@@ -30,7 +30,9 @@
   timestamp/1,
   now/0,
   now/1,
-  hashPass/3
+  hashPass/3,
+  bearer_atoken_check/1,
+  bearer_atoken_check/2
 ]).
 
 uuid() ->
@@ -62,3 +64,42 @@ hashPass(Password, Salt, Factor) when (Factor rem 2) > 0 ->
 
 hashPass(Password, Salt, Factor) ->
   hashPass(hash_md5:build(lists:concat([Salt, Password])), Salt, Factor - 1).
+
+bearer_atoken_check(Req) -> bearer_atoken_check(Req, []).
+
+bearer_atoken_check(Req, ScopeList) ->
+  case cowboy_req:header(<<"Authorization">>, Req) of
+    undefined -> {error, bad_header};
+    HeaderValBin ->
+      HeaderVal = string:strip(binary_to_list(HeaderValBin)),
+      case string:tokens(HeaderVal, " ") of
+        [Bearer, AToken] ->
+          case string:equal(string:to_lower(Bearer), "bearer") of
+            true -> %% Header is ok, check the existence of the token
+              case atoken_server:check(AToken) of
+                {ok, TokenKVList} ->
+                  TokenScopeList = proplists:get_value(scope, TokenKVList, []),
+                  %% If ScopeList is not an empty array, then the scope list should be checked
+                  case ScopeList of
+                    [] -> {ok, TokenKVList}; %% Allow all
+                    ScopeList ->
+                      %% Fold left and check if all requested scopes are provided by the token
+                      CompareFun =
+                        fun(Item, Boolean) ->
+                          %% if false, erlang will never check the right part
+                          Boolean andalso lists:member(Item, TokenScopeList)
+                        end,
+                      BooleanSwitch = lists:foldl(CompareFun, true, ScopeList),
+                      %% Check the outcome
+                      case BooleanSwitch of
+                        true -> {ok, TokenKVList};
+                        _ -> {error, bad_header} %% bad scope
+                      end
+                  end;
+                _ -> {error, bad_header} %% bad token
+              end;
+            _ -> {error, bad_header} %% bad header, no bearer
+          end;
+        _ -> {error, bad_header} %% bad header, bad value of header
+      end
+  end.

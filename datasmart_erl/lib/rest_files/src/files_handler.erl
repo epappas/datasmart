@@ -30,7 +30,7 @@
 -record(state, {
   method, isAuthorized = false,
   is_conflict = false, etag,
-  key_type, key
+  key_type, key, salt, scope
 }).
 
 init(Req, _Opts) ->
@@ -38,10 +38,34 @@ init(Req, _Opts) ->
 
 handle(Req, State) ->
   Method = cowboy_req:method(Req),
-  NewState = State#state{method = Method},
-  %% TODO -> check AUTH token
-  {ok, Req2} = process(Req, NewState),
-  {ok, Req2, []}.
+
+  ScopeList =
+    case Method of
+      <<"GET">> -> [<<"download_files">>];
+      <<"PUT">> -> [<<"upload_files">>];
+      _ -> []
+    end,
+
+  case ds_util:bearer_atoken_check(Req, ScopeList) of
+    {ok, TokenKVList} ->
+      AUKey = proplists:get_value(aukey, TokenKVList),
+      Salt = proplists:get_value(opensalt, TokenKVList),
+      Scope = proplists:get_value(scope, TokenKVList),
+
+      NewState = State#state{
+        method = Method,
+        isAuthorized = true,
+        key_type = aukey,
+        key = AUKey,
+        salt = Salt,
+        scope = Scope
+      },
+
+      {ok, Req2} = process(Req, NewState),
+      {ok, Req2, []};
+    {error, _} ->
+      {ok, Req, []}
+  end.
 
 process(Req, #state{method = <<"GET">>, isAuthorized = true, key_type = KeyType, key = Key} = _State) ->
   QsVals = cowboy_req:parse_qs(Req),
@@ -76,7 +100,7 @@ process(Req, #state{method = <<"PUT">>, isAuthorized = true, key_type = KeyType,
     _ -> end_with_failure(415, <<"Unsupported Media Type">>, Req)
   end;
 
-process(_, Req) -> end_with_failure(405, "Method not allowed.", Req).
+process(Req, _) -> end_with_failure(405, "Method not allowed.", Req).
 
 end_with_success(Message, Req) -> {ok, echo(200, jiffy:encode(Message), Req)}.
 
