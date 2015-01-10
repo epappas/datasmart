@@ -63,8 +63,8 @@ check(AToken) -> gen_server:call(?MODULE, {check, AToken}).
 -spec(get_aukey({Type :: term(), Value :: term()}) -> {ok, AUKey :: term()} | {error, Error :: term()}).
 get_aukey({Type, Value}) -> gen_server:call(?MODULE, {get_aukey, {Type, Value}}).
 
--spec(generate(Token :: #ukey_generate{}) -> {ok, list()}).
-generate(#ukey_generate{} = Token) -> gen_server:call(?MODULE, {generate, Token}).
+-spec(generate(Token :: #atoken_generate{}) -> {ok, list()}).
+generate(#atoken_generate{} = Token) -> gen_server:call(?MODULE, {generate, Token}).
 
 %%%===================================================================
 %%% gen_server callbacks
