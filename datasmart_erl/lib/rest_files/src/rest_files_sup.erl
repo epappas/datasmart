@@ -47,7 +47,15 @@ init([]) ->
     {files_server,
       {files_server, start_link, []},
       permanent, 1000, worker,
-      [files_server]}
+      [files_server]},
+    {instream_server,
+      {instream_server, start_link, []},
+      permanent, 1000, worker,
+      [instream_server]},
+    {outstream_server,
+      {outstream_server, start_link, []},
+      permanent, 1000, worker,
+      [outstream_server]}
   ]}}.
 
 

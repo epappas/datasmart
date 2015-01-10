@@ -18,7 +18,7 @@
 %%%
 %%% @end
 %%%-------------------------------------------------------------------
--module(files_server).
+-module(outstream_server).
 -author("evangelosp").
 
 -include("file_records.hrl").
@@ -28,7 +28,7 @@
 %% API
 -export([
   start_link/0,
-  fetch_info/3
+  stream/4
 ]).
 
 %% gen_server callbacks
@@ -52,8 +52,8 @@
 start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-fetch_info(AuthKeyType, AuthKey, FileKey) ->
-  gen_server:call(?MODULE, {fetch_info, {AuthKeyType, AuthKey, FileKey}}).
+stream(AuthKeyType, AuthKey, FileKey, Req) ->
+  gen_server:call(?MODULE, {stream, {AuthKeyType, AuthKey, FileKey, Req}}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -74,8 +74,8 @@ init([]) ->
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
-handle_call({fetch_info, {AuthKeyType, AuthKey, FileKey}}, _From, State) ->
-  {reply, doFetchInfo(AuthKeyType, AuthKey, FileKey), State};
+handle_call({stream, {AuthKeyType, AuthKey, FileKey, Req}}, _From, State) ->
+  {reply, doStreamFileOutbound(AuthKeyType, AuthKey, FileKey, Req), State};
 
 handle_call(_Request, _From, State) ->
   {reply, {}, State}.
@@ -96,10 +96,66 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-doFetchInfo(_AuthKeyType, _AuthKey, FileKey) ->
-  case couch:get(?couch_file_uploads, FileKey) of
-    {ok, FileJson} ->
-      {FileKVList} = FileJson,
-      {ok, FileKVList};
+doStreamFileOutbound(AuthKeyType, AuthKey, FileKey, Req) ->
+  case files_server:fetch_info(AuthKeyType, AuthKey, FileKey) of
+    {ok, FileKVList} ->
+      case couch:get(?couch_file_secrets, FileKey) of
+        {ok, EssentialsJson} ->
+          {EKVList} = EssentialsJson,
+
+          AESKey64 = proplists:get_value(<<"aes_key">>, EKVList),
+          AESIV64 = proplists:get_value(<<"aes_iv">>, EKVList),
+          AESKey = base64:decode(AESKey64),
+          AESIV = base64:decode(AESIV64),
+
+          CType = proplists:get_value(<<"ctype">>, FileKVList),
+          FileName = proplists:get_value(<<"filename">>, FileKVList),
+
+          case couch:fetch_attachment_stream(?couch_file_uploads, FileKey, FileName) of
+            {ok, StreamRef} ->
+
+              EncrState = crypto:stream_init(aes_ctr, AESKey, AESIV),
+
+              StreamFun = fun(SendChunk) ->
+                outStream_loop_file(SendChunk, StreamRef, EncrState, Req)
+              end,
+              Req2 = cowboy_req:set_resp_body_fun(chunked, StreamFun, Req),
+
+              cowboy_req:reply(200, [
+                {<<"content-type">>, CType},
+                {<<"server">>, <<"myinbox-datastore">>}
+              ], Req2);
+            _ -> {error, not_found}
+          end;
+        _ -> {error, not_found}
+      end;
     _ -> {error, not_found}
   end.
+
+outStream_loop_file(SendChunk, StreamRef, EncrState, Req) ->
+  case couchbeam:stream_attachment(StreamRef) of
+    {ok, EncrResult} ->
+      {NewEncrState, Result} = crypto:stream_decrypt(EncrState, EncrResult),
+
+      SendChunk(Result),
+
+      outStream_loop_file(SendChunk, StreamRef, NewEncrState, Req);
+    done -> {ok, Req};
+    {error, Err} ->
+      %% TODO Log this
+      end_with_failure(500, "Transport issue", Req),
+      {error, Err}
+  end.
+
+end_with_failure(Code, Message, Req) ->
+  {ok, echo(Code, jiffy:encode({[
+    {code, Code},
+    {status, error},
+    {error, Message}
+  ]}), Req)}.
+
+echo(Status, Echo, Req) ->
+  cowboy_req:reply(Status, [
+    {<<"content-type">>, <<"application/json; charset=utf-8">>},
+    {<<"server">>, <<"myinbox-datastore">>}
+  ], Echo, Req).
