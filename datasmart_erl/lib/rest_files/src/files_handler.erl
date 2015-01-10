@@ -21,79 +21,45 @@
 -module(files_handler).
 -author("evangelosp").
 
--export([init/3]).
+-include("file_records.hrl").
+
+-export([init/2]).
 -export([handle/2]).
 -export([terminate/3]).
 
-init(_Transport, Req, []) ->
-  {ok, Req, undefined}.
+-record(state, {
+  method, isAuthorized = false,
+  is_conflict = false, etag,
+  key_type, key
+}).
+
+init(Req, _Opts) ->
+  handle(Req, #state{}).
 
 handle(Req, State) ->
-  {Method, _} = cowboy_req:method(Req),
-  process(Method, Req),
-  {ok, Req, State}.
+  Method = cowboy_req:method(Req),
+  NewState = State#state{method = Method},
+  %% TODO -> check AUTH token
+  {ok, Req2} = process(Req, NewState),
+  {ok, Req2, []}.
 
-process(<<"GET">>, Req) ->
-  {OUkeyBin, _} = cowboy_req:binding(oukey, Req),
+process(Req, #state{method = <<"GET">>, isAuthorized = true, key_type = KeyType, key = Key} = _State) ->
+  QsVals = cowboy_req:parse_qs(Req),
   {FileKeyBin, _} = cowboy_req:binding(filekey, Req),
-  {Attachment, _} = cowboy_req:qs_val(<<"attachment">>, Req, false),
+  {_, Attachment} = proplists:get_value(<<"attachment">>, QsVals, false),
 
-  case {OUkeyBin, FileKeyBin} of
-    {undefined, undefined} -> end_with_failure(400, "No Valid Arguments", Req);
-    {undefined, _} -> end_with_failure(400, "No Valid Arguments", Req); %% TODO list files
-    {_, undefined} -> end_with_failure(400, "No Valid Arguments", Req);
-    {OUkeyBin, FileKeyBin} ->
-      OUkey = binary:bin_to_list(OUkeyBin),
+  case FileKeyBin of
+    undefined -> end_with_failure(400, "No Valid Arguments", Req);
+    FileKeyBin ->
       FileKey = binary:bin_to_list(FileKeyBin),
 
-      case couch:get("user_uploads_essentials", FileKey) of
-        {error, _Error} -> {error, "Uknown Key"};
-        {ok, EssentialsJson} ->
-          {EKVList} = EssentialsJson,
+      case Attachment of
+        false -> %% When only File info is requested
+          FileKVList = files_server:fetch_info(KeyType, Key, FileKey),
+          end_with_success(FileKVList, Req);
+        true -> %% When the actual file content is requested
 
-          case user_server:match_ouKey(OUkey) of
-            {ok, _Ukey} ->
-
-              AESKey64 = proplists:get_value(<<"aes_key">>, EKVList),
-              AESIV64 = proplists:get_value(<<"aes_iv">>, EKVList),
-              AESKey = base64:decode(AESKey64),
-              AESIV = base64:decode(AESIV64),
-
-              case couch:get("user_uploads", FileKey) of
-                {ok, FileJson} ->
-                  {FileKVList} = FileJson,
-
-                  case Attachment of
-                    false -> echo(200, jiffy:encode({FileKVList}), Req);
-                    _ ->
-                      CType = proplists:get_value(<<"ctype">>, FileKVList),
-                      FileName = proplists:get_value(<<"filename">>, FileKVList),
-
-                      case couch:fetch_attachment_stream("user_uploads", FileKey, FileName) of
-                        {ok, StreamRef} ->
-
-                          EncrState = crypto:stream_init(aes_ctr, AESKey, AESIV),
-
-                          StreamFun = fun(SendChunk) ->
-                            stream_send_file(SendChunk, StreamRef, EncrState, Req)
-                          end,
-                          Req2 = cowboy_req:set_resp_body_fun(chunked, StreamFun, Req),
-
-                          cowboy_req:reply(200, [
-                            {<<"content-type">>, CType},
-                            {<<"server">>, <<"myinbox-datastore">>}
-                          ], Req2);
-
-                        _ -> end_with_failure(404, "Not Found", Req)
-                      end
-                  end;
-
-                _ -> end_with_failure(400, "No Valid Arguments", Req)
-              end;
-
-            _ -> end_with_failure(400, "No Valid Arguments", Req)
-          end;
-        _ -> {error, "Uknown Key"}
+          files_server:outStream_file(KeyType, Key, FileKey, Req)
       end
   end;
 
@@ -125,18 +91,20 @@ process(<<"POST">>, Req) ->
 
 process(_, Req) -> end_with_failure(405, "Method not allowed.", Req).
 
+end_with_success(Message, Req) -> {ok, echo(200, jiffy:encode(Message), Req)}.
+
+end_with_failure(Code, Message, Req) ->
+  {ok, echo(Code, jiffy:encode({[
+    {code, Code},
+    {status, error},
+    {error, Message}
+  ]}), Req)}.
+
 echo(Status, Echo, Req) ->
   cowboy_req:reply(Status, [
     {<<"content-type">>, <<"application/json; charset=utf-8">>},
     {<<"server">>, <<"myinbox-datastore">>}
   ], Echo, Req).
-
-end_with_failure(Code, Message, Req) ->
-  echo(Code, jiffy:encode({[
-    {code, Code},
-    {status, error},
-    {error, Message}
-  ]}), Req).
 
 terminate(_Reason, _Req, _State) -> ok.
 
@@ -244,18 +212,4 @@ stream_receive_file(Req, UploadRef, CryptoState) ->
       {NewCryptoState, CipherBody} = crypto:stream_encrypt(CryptoState, Body),
       ok = couch:stream_attach(UploadRef, CipherBody),
       stream_receive_file(Req2, UploadRef, NewCryptoState)
-  end.
-
-stream_send_file(SendChunk, StreamRef, EncrState, Req) ->
-  case couchbeam:stream_attachment(StreamRef) of
-    {ok, EncrResult} ->
-      {NewEncrState, Result} = crypto:stream_decrypt(EncrState, EncrResult),
-
-      SendChunk(Result),
-
-      stream_send_file(SendChunk, StreamRef, NewEncrState, Req);
-    done -> {ok, Req};
-    {error, Err} ->
-      end_with_failure(500, "Transport issue", Req),
-      {error, Err}
   end.
