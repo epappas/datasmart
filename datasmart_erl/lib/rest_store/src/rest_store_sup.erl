@@ -92,7 +92,8 @@ routing_dispatch() ->
     user, user_srp_begin, user_srp_answer, user_srp_verify,
     user_oukey, user_oukey_srp_begin, user_oukey_srp_answer, user_oukey_srp_verify,
     user_aukey, user_aukey_srp_begin, user_aukey_srp_answer, user_aukey_srp_verify,
-    files, files_key
+    files, files_key,
+    atoken
   ],
   cowboy_router:compile([
     %% {URIHost, list({URIPath, Handler, Opts})}
@@ -151,10 +152,16 @@ route(user_aukey_srp_verify) ->
   {"/user/_aukey/_srp/verify", rest_srpverify_handler, [{module, aukey}]};
 
 %% =========================================
+%% atoken
+%% =========================================
+route(atoken) ->
+  {"/token", rest_oukey_handler, []};
+
+%% =========================================
 %% files
 %% =========================================
 route(files) ->
-  {"/user/:type/:key/files", files_handler, []};
+  {"/user/files", files_handler, []};
 
 route(files_key) ->
-  {"/user/:type/:key/files/:filekey", files_handler, []}.
+  {"/user/files/:filekey", files_handler, []}.
