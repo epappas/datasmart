@@ -155,7 +155,7 @@ route(user_aukey_srp_verify) ->
 %% atoken
 %% =========================================
 route(atoken) ->
-  {"/token", rest_oukey_handler, []};
+  {"/token", rest_atoken_handler, []};
 
 %% =========================================
 %% files

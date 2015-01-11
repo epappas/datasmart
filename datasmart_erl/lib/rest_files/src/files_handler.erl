@@ -69,8 +69,8 @@ handle(Req, State) ->
 
 process(Req, #state{method = <<"GET">>, isAuthorized = true, key_type = KeyType, key = Key} = _State) ->
   QsVals = cowboy_req:parse_qs(Req),
-  {FileKeyBin, _} = cowboy_req:binding(filekey, Req),
-  {_, Attachment} = proplists:get_value(<<"attachment">>, QsVals, false),
+  FileKeyBin = cowboy_req:binding(filekey, Req),
+  Attachment = proplists:get_value(<<"attachment">>, QsVals, false),
 
   case FileKeyBin of
     undefined -> end_with_failure(400, "No Valid Arguments", Req);
