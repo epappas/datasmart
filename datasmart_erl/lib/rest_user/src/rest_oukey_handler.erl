@@ -39,7 +39,8 @@
   state = init, method,
   isAuthorized = false,
   is_conflict = false,
-  oukey, ukey, profile, etag
+  oukey, ukey, profile, etag,
+  tokenList
 }).
 
 %% FLOW: ALL[0]
@@ -107,10 +108,19 @@ handle(Req, State = #state{method = <<"GET">>, state = malformed_request}) ->
   end;
 
 handle(Req, State = #state{method = <<"GET">>, oukey = OUkey, state = is_authorized}) ->
-  case oukey_server:get_ukey({oukey, OUkey}) of
-    {ok, Ukey} ->
-      NewState = State#state{ukey = Ukey, isAuthorized = true},
-      {true, Req, NewState};
+  QsVals = cowboy_req:parse_qs(Req),
+  ScopeStr = proplists:get_value(<<"scope">>, QsVals, [<<"list_panel">>]),
+
+  ScopeList = string:tokens(ScopeStr, ","),
+
+  case ds_util:bearer_atoken_check(Req, ScopeList) of
+    {ok, TokenKVList} ->
+      case oukey_server:get_ukey({oukey, OUkey}) of
+        {ok, Ukey} ->
+          NewState = State#state{ukey = Ukey, tokenList = TokenKVList, isAuthorized = true},
+          {true, Req, NewState};
+        {error, _} -> {false, Req, State}
+      end;
     {error, _} -> {false, Req, State}
   end;
 
