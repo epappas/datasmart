@@ -72,11 +72,13 @@ process(Req, #state{method = <<"GET">>, isAuthorized = true, key_type = KeyType,
   FileKeyBin = cowboy_req:binding(filekey, Req),
   Attachment = proplists:get_value(<<"attachment">>, QsVals, false),
 
+  %% check if File name is defined
   case FileKeyBin of
     undefined -> end_with_failure(400, "No Valid Arguments", Req);
     FileKeyBin ->
       FileKey = binary:bin_to_list(FileKeyBin),
 
+      %% Fork responce whether the attachment is requested or not
       case Attachment of
         false -> %% When only File info is requested
           FileKVList = files_server:fetch_info(KeyType, Key, FileKey),
