@@ -30,3 +30,14 @@ devops/chef-solo/
 .ssh/
 .pub
 .pem
+.DS_Store
+*.log
+*.log.*
+.log
+*.csr
+.csr
+*.key
+.key
+.ssh/
+.pub
+.pem
