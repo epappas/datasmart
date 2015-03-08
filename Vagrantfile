@@ -44,9 +44,7 @@ dsa_key = File.expand_path('~') + '/.ssh/id_dsa'
 # Vagrant Nodes
 # ==========================================
 nodes = [
-    # { :hostname => 'erl',           :ip => '192.168.1.3', :box => 'trusty64', :box_url => '"https://vagrantcloud.com/ubuntu/boxes/trusty64/versions/14.04/providers/virtualbox.box'},
-    # { :hostname => 'openapi',       :ip => '192.168.1.4', :box => 'trusty64', :box_url => '"https://vagrantcloud.com/ubuntu/boxes/trusty64/versions/14.04/providers/virtualbox.box'},
-    { :hostname => 'experimental',  :ip => '192.168.1.5', :box => 'trusty64', :box_url => '"https://vagrantcloud.com/ubuntu/boxes/trusty64/versions/14.04/providers/virtualbox.box'}
+    { :hostname => 'erl',           :ip => '192.168.1.3', :box => 'trusty64', :box_url => '"https://vagrantcloud.com/ubuntu/boxes/trusty64/versions/14.04/providers/virtualbox.box'}
 ]
 
 # Key Finder
