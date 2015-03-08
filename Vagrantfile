@@ -26,7 +26,7 @@ Vagrant.require_version ">= 1.6.0"
 CONFIG = File.join(File.dirname(__FILE__), "./devops/Vagrant-config.rb")
 VAGRANTFILE_API_VERSION = "2"
 
-$ENVIRONMENTS     = ['development', 'test', 'production']
+$ENVIRONMENTS     = ['development'] #, 'test', 'production']
 $DOMAIN           = 'local'
 
 $num_instances    = $ENVIRONMENTS.length
@@ -112,75 +112,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         # ==========================================
         node_config.ssh.forward_agent = true
 
-        # Copy over my keys
-        # ==========================================
-        if $key
-          unless File.exist?("./devops/%s" % node[:hostname])
-            FileUtils.mkdir_p("./devops/%s/.ssh" % node[:hostname])
-          end
-
-          FileUtils.cp($key, "./devops/%s/.ssh/%s" % [node[:hostname], $keyBaseName])
-          FileUtils.cp($key_pub, "./devops/%s/.ssh/%s" % [node[:hostname], $keyBaseName + '.pub'])
-        end
-
-        # Docker
-        # ==========================================
-        # node_config.vm.provision "docker", :images => ["ubuntu", "shykes/couchdb", "redis", "coreos/etcd", "dockerfile/haproxy"]
-        #
-        # # Docker - couchdb
-        # # ==========================================
-        # node_config.vm.provision "docker" do |d|
-        #   d.run "couchdb", :image => "shykes/couchdb", :args => "-d -p 5984:5984"
-        # end
-        #
-        # # Docker - redis
-        # # ==========================================
-        # node_config.vm.provision "docker" do |d|
-        #   d.run "redis", :image => "redis", :args => "-d -p 6379:6379 -p 26379:26379"
-        # end
-
         # Syncs
         # ==========================================
-        node_config.vm.synced_folder "./devops",          "/app/devops",        :id => "vagrant-devops",         :nfs => true
-        node_config.vm.synced_folder "./data",            "/app/data",          :id => "vagrant-data",           :nfs => true
-        node_config.vm.synced_folder "./datasmart_erl",   "/app/datasmart_erl", :id => "vagrant-datasmart_erl",  :nfs => true
-        node_config.vm.synced_folder "./openapi",         "/app/openapi",       :id => "vagrant-openapi",        :nfs => true
-        node_config.vm.synced_folder "./opentests",       "/app/opentests",     :id => "vagrant-opentests",      :nfs => true
-
-        # Chef Provisioner
-        # ==========================================
-        config.berkshelf.enabled = true
-        config.berkshelf.berksfile_path = "./devops/chef-repo/Berksfile"
-        # config.berkshelf.args = []
-        config.vm.provision "chef_solo" do |chef|
-          chef.node_name          = "vagrant"
-          chef.provisioning_path  = "/tmp/vagrant-chef"
-          chef.cookbooks_path     = "./devops/chef-repo/cookbooks"
-          chef.roles_path         = "./devops/chef-repo/roles"
-          chef.data_bags_path     = "./devops/chef-repo/data_bags"
-          chef.environments_path  = "./devops/chef-repo/environments"
-          chef.environment        = $ENVIRONMENTS[i]
-          chef.synced_folder_type = "nfs"
-
-          chef.add_role           "datasmart_erl"
-        end
+        node_config.vm.synced_folder "./data",  "/app/data",      :id => "vagrant-data",       :nfs => true
+        node_config.vm.synced_folder "./",      "/app/datasmart", :id => "vagrant-datasmart",  :nfs => true
       end # config.vm.define
     end # $num_instances loop
   end # nodes loop
 end # of main
-
-# config.vm.provider :digital_ocean do |provider, override|
-#   override.ssh.private_key_path = '~/.ssh/id_rsa'
-#   override.vm.box = 'digital_ocean'
-#   override.vm.box_url = "https://github.com/smdahlen/vagrant-digitalocean/raw/master/box/digital_ocean.box"
-#
-#   provider.token = 'TOKEN'
-#   provider.image = 'Ubuntu 14.04 x64'
-#   provider.region = 'nyc2'
-#   provider.size = '512mb'
-# end
-
-# config.vm.provision "shell" do |s|
-#   s.path = "./bootstrap.sh"
-#   s.args = []
-# end
