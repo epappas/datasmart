@@ -1,14 +1,18 @@
-EVAL ?= "application:start(rest_store)."
-START ?= rest_store
-NODE ?= datasmart
-HOSTNAME ?= `uname -n`
-REBAR ?= "./rebar"
-CONFIG ?= "datasmart.config"
-RUN := erl -pa lib/*/ebin -pa deps/*/ebin -smp enable -boot start_sasl -config ${CONFIG} ${ERL_ARGS}
+ERL         ?= erl
+ERLC		?= erlc
+APP         := erl_streams
+REBAR       ?= ./rebar
+EVAL        ?= "application:start(rest_store)."
+START       ?= rest_store
+NODE        ?= datasmart
+HOSTNAME    ?= `uname -n`
+REBAR       ?= "./rebar"
+CONFIG      ?= "datasmart.config"
+RUN         := @$(ERL) -pa lib/*/ebin -pa deps/*/ebin -smp enable -boot start_sasl -config ${CONFIG} ${ERL_ARGS}
 
-EVAL_IGNITION = -eval ${EVAL};
-START_IGNITION = -s ${START}
-IGNITION = ${START_IGNITION}
+EVAL_IGNITION   = -eval ${EVAL};
+START_IGNITION  = -s ${START}
+IGNITION        = ${START_IGNITION}
 
 all:
 	${REBAR} get-deps compile
@@ -30,3 +34,6 @@ run: quick
 	else ${RUN} ${IGNITION}; \
 	fi
 
+test:
+	@$(ERLC) -o tests/ tests/*.erl
+	prove -v tests/*.t
