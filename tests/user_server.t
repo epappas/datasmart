@@ -36,8 +36,13 @@ main(_) ->
   ok.
 
 test_register() ->
-  {ok, ResultList} = user_server:register("blah@blah.com"),
+  Email = string:concat(
+    hash_md5:build(binary_to_list(uuid:uuid1())),
+    ".test@test.domain.com"
+  ),
+  {ok, ResultList} = user_server:register(Email),
 
   etap:is(lists:keymember(email, 1, ResultList), true, "Should have return an Email"),
+  etap:is(lists:keyfind(email, 1, ResultList), {email, list_to_binary(Email)}, "Should return the same Email"),
   etap:is(lists:keymember(oukey, 1, ResultList), true, "Should have return an oukey"),
   etap:is(lists:keymember(secret, 1, ResultList), true, "Should have return a secret").
