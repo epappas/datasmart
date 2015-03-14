@@ -22,6 +22,8 @@
 %%% @end
 %%%-------------------------------------------------------------------
 
+-include("../lib/rest_user/src/user_records.hrl").
+
 main(_) ->
   code:add_paths(filelib:wildcard("./lib/*/ebin", "./")),
   code:add_paths(filelib:wildcard("./deps/*/ebin", "./")),
@@ -30,7 +32,8 @@ main(_) ->
 
   etap:plan(unknown),
 
-  test_register(),
+  RegisterKVList = test_register(),
+  _ProfileKVList = test_user_profile(RegisterKVList),
 
   etap:end_tests(),
   ok.
@@ -45,4 +48,23 @@ test_register() ->
   etap:is(lists:keymember(email, 1, ResultList), true, "Should have return an Email"),
   etap:is(lists:keyfind(email, 1, ResultList), {email, list_to_binary(Email)}, "Should return the same Email"),
   etap:is(lists:keymember(oukey, 1, ResultList), true, "Should have return an oukey"),
-  etap:is(lists:keymember(secret, 1, ResultList), true, "Should have return a secret").
+  etap:is(lists:keymember(secret, 1, ResultList), true, "Should have return a secret"),
+  etap:is(lists:keymember(aukey, 1, ResultList), true, "Should have return an aukey"),
+  etap:is(lists:keymember(asecret, 1, ResultList), true, "Should have return an asecret"),
+  ResultList.
+
+test_user_profile(ResultList) ->
+  Email = proplists:get_value(email, ResultList),
+  OUkey = proplists:get_value(oukey, ResultList),
+%%   Secret = proplists:get_value(secret, ResultList),
+%%   AUkey = proplists:get_value(aukey, ResultList),
+%%   ASecret = proplists:get_value(asecret, ResultList),
+
+  {ok, UKey} = oukey_server:get_ukey({oukey, OUkey}),
+  {ok, UserKVList} = user_server:getuser(UKey),
+
+  Emaill2 = proplists:get_value(<<"email">>, UserKVList),
+
+  etap:is(Emaill2, Email, "Email should be fetched"),
+  UserKVList.
+
