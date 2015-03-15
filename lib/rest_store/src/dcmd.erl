@@ -1,5 +1,6 @@
+%%% -*- erlang -*-
 %%%-------------------------------------------------------------------
-%%% @author evangelosp
+%%% @author Evangelos Pappas <epappas@evalonlabs.com>
 %%% @copyright (C) 2014, evalonlabs
 %%% Copyright 2015, evalonlabs
 %%%
@@ -17,10 +18,9 @@
 %%% @doc
 %%%
 %%% @end
-%%% Created : 26. Oct 2014 12:43
 %%%-------------------------------------------------------------------
 -module(dcmd).
--author("evangelosp").
+-author("epappas").
 
 %% API
 -export([run/1, run/2, run/3]).

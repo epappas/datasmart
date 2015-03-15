@@ -2,7 +2,7 @@
 %%% -*- erlang -*-
 %%! -pa ./tests -smp enable -boot start_sasl -config datasmart.config
 %%%-------------------------------------------------------------------
-%%% @author evangelosp
+%%% @author Evangelos Pappas <epappas@evalonlabs.com>
 %%% @copyright (C) 2014, evalonlabs
 %%% Copyright 2015, evalonlabs
 %%%
@@ -21,6 +21,7 @@
 %%%
 %%% @end
 %%%-------------------------------------------------------------------
+-author("epappas").
 
 -include("../lib/rest_user/src/user_records.hrl").
 

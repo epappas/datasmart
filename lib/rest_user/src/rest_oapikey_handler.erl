@@ -1,5 +1,6 @@
+%%% -*- erlang -*-
 %%%-------------------------------------------------------------------
-%%% @author evangelosp
+%%% @author Evangelos Pappas <epappas@evalonlabs.com>
 %%% @copyright (C) 2014, evalonlabs
 %%% Copyright 2015, evalonlabs
 %%%
@@ -19,7 +20,7 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(rest_oapikey_handler).
--author("evangelosp").
+-author("epappas").
 
 -export([init/2]).
 -export([

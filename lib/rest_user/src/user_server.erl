@@ -1,5 +1,6 @@
+%%% -*- erlang -*-
 %%%-------------------------------------------------------------------
-%%% @author evangelosp
+%%% @author Evangelos Pappas <epappas@evalonlabs.com>
 %%% @copyright (C) 2014, evalonlabs
 %%% Copyright 2015, evalonlabs
 %%%
@@ -19,7 +20,7 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(user_server).
--author("evangelosp").
+-author("epappas").
 
 -behaviour(gen_server).
 

@@ -1,5 +1,6 @@
+%%% -*- erlang -*-
 %%%-------------------------------------------------------------------
-%%% @author evangelosp
+%%% @author Evangelos Pappas <epappas@evalonlabs.com>
 %%% @copyright (C) 2014, evalonlabs
 %%% Copyright 2015, evalonlabs
 %%%
@@ -18,7 +19,7 @@
 %%%
 %%% @end
 %%%-------------------------------------------------------------------
--author("evangelosp").
+-author("epappas").
 
 -define(couch_secrets, "erl_users_secrets").
 -define(couch_file_secrets, "erl_files_secrets").

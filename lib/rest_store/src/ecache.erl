@@ -1,6 +1,7 @@
+%%% -*- erlang -*-
 %%%-------------------------------------------------------------------
-%%% @author evangelosp
-%%% @copyright (C) 2015, evalonlabs
+%%% @author Evangelos Pappas <epappas@evalonlabs.com>
+%%% @copyright (C) 2014, evalonlabs
 %%% Copyright 2015, evalonlabs
 %%%
 %%% Licensed under the Apache License, Version 2.0 (the 'License');
@@ -19,7 +20,7 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(ecache).
--author("evangelosp").
+-author("epappas").
 
 -behaviour(gen_server).
 
