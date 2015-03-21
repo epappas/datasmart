@@ -100,7 +100,15 @@ process(Req, #state{method = <<"PUT">>, isAuthorized = true, key_type = KeyType,
         {fileList, {FileList}}
       ]}), Req2);
 
-    _ -> end_with_failure(415, <<"Unsupported Media Type">>, Req)
+    _ ->
+      case instream_server:stream(KeyType, Key, Req) of
+        {ok, Req2, FileList} ->
+          echo(200, jiffy:encode({[
+            {fileList, {FileList}}
+          ]}), Req2);
+        _ ->
+          end_with_failure(415, <<"Unsupported Media Type">>, Req)
+      end
   end;
 
 process(Req, _) -> end_with_failure(405, "Method not allowed.", Req).
