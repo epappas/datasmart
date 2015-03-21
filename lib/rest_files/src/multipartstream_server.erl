@@ -19,7 +19,7 @@
 %%%
 %%% @end
 %%%-------------------------------------------------------------------
--module(instream_server).
+-module(multipartstream_server).
 -author("epappas").
 
 -include("file_records.hrl").

@@ -93,7 +93,7 @@ process(Req, #state{method = <<"GET">>, isAuthorized = true, key_type = KeyType,
 process(Req, #state{method = <<"PUT">>, isAuthorized = true, key_type = KeyType, key = Key} = _State) ->
   case cowboy_req:parse_header(<<"content-type">>, Req) of
     {<<"multipart">>, <<"form-data">>, _} ->
-      {ok, Req2, FieldList, FileList} = instream_server:stream(KeyType, Key, Req),
+      {ok, Req2, FieldList, FileList} = multipartstream_server:stream(KeyType, Key, Req),
 
       echo(200, jiffy:encode({[
         {fieldList, {FieldList}},
