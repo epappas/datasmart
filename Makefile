@@ -1,6 +1,5 @@
 ERL         ?= erl
 ERLC		?= erlc
-APP         := erl_streams
 REBAR       ?= ./rebar
 EVAL        ?= "application:start(rest_store)."
 START       ?= rest_store
