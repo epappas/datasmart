@@ -119,6 +119,10 @@ multipart(AuthKeyType, AuthKey, Req, FieldList, FileList) ->
 
             %% Initiate crypto stream
             CryptoState = crypto:stream_init(aes_ctr, AESKey, AESIV),
+            %% Initiate hash contexts
+            MD5_Context = crypto:hmac_init(md5, FileKey),
+            SHA_Context = crypto:hmac_init(sha, FileKey),
+            SHA512_Context = crypto:hmac_init(sha512, FileKey),
 
             %% Check if file exist, if yes, state the version of the doc
             Opts =
@@ -135,7 +139,11 @@ multipart(AuthKeyType, AuthKey, Req, FieldList, FileList) ->
             {ok, UploadRef} = couch:attach(?couch_file_uploads, FileKey, {Filename, stream}, Opts),
 
             %% commit upload
-            {ok, {ResultList}, Req3, _} = inStream_loop_file(Req2, UploadRef, CryptoState),
+            {ok, {ResultList}, Req3, {_, MD5, SHA, SHA512}} =
+              inStream_loop_file(Req2, UploadRef, {
+                CryptoState, MD5_Context,
+                SHA_Context, SHA512_Context
+              }),
 
             Rev1 = proplists:get_value(<<"rev">>, ResultList),
             Id = proplists:get_value(<<"id">>, ResultList),
@@ -153,7 +161,10 @@ multipart(AuthKeyType, AuthKey, Req, FieldList, FileList) ->
                 {<<"fieldName">>, FieldName},
                 {<<"filename">>, Filename},
                 {<<"ctype">>, CType},
-                {<<"ctransferEncoding">>, CTransferEncoding}
+                {<<"ctransferEncoding">>, CTransferEncoding},
+                {<<"md5">>, MD5},
+                {<<"sha">>, SHA},
+                {<<"sha512">>, SHA512}
               ]
             ])},
 
@@ -190,15 +201,35 @@ multipart(AuthKeyType, AuthKey, Req, FieldList, FileList) ->
   end.
 
 %% Handy loop
-inStream_loop_file(Req, UploadRef, CryptoState) ->
+inStream_loop_file(Req, UploadRef, {
+  CryptoState, MD5_Context,
+  SHA_Context, SHA512_Context
+}) ->
   case cowboy_req:part_body(Req) of
     {ok, Body, Req2} ->
       {NewCryptoState, CipherBody} = crypto:stream_encrypt(CryptoState, Body),
+      NewMD5_Context = crypto:hmac_update(MD5_Context, Body),
+      NewSHA_Context = crypto:hmac_update(SHA_Context, Body),
+      NewSHA512_Context = crypto:hmac_update(SHA512_Context, Body),
+
+      MD5 = crypto:hmac_final(MD5_Context),
+      SHA = crypto:hmac_final(SHA_Context),
+      SHA512 = crypto:hmac_final(SHA512_Context),
+
       ok = couch:stream_attach(UploadRef, CipherBody),
       {ok, Result} = couch:stream_attach_done(UploadRef),
-      {ok, Result, Req2, NewCryptoState};
+
+      {ok, Result, Req2, {NewCryptoState, MD5, SHA, SHA512}};
     {more, Body, Req2} ->
       {NewCryptoState, CipherBody} = crypto:stream_encrypt(CryptoState, Body),
+      NewMD5_Context = crypto:hmac_update(MD5_Context, Body),
+      NewSHA_Context = crypto:hmac_update(SHA_Context, Body),
+      NewSHA512_Context = crypto:hmac_update(SHA512_Context, Body),
+
       ok = couch:stream_attach(UploadRef, CipherBody),
-      inStream_loop_file(Req2, UploadRef, NewCryptoState)
+
+      inStream_loop_file(Req2, UploadRef, {
+        NewCryptoState, NewMD5_Context,
+        NewSHA_Context, NewSHA512_Context
+      })
   end.
