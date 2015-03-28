@@ -24,4 +24,5 @@
 -define(couch_secrets, "erl_users_secrets").
 -define(couch_file_secrets, "erl_files_secrets").
 -define(couch_file_uploads, "erl_files_uploads").
+-define(couch_file_notification, "erl_file_notification").
 

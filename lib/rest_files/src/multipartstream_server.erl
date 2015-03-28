@@ -162,6 +162,7 @@ multipart(AuthKeyType, AuthKey, Req, FieldList, FileList) ->
                 {<<"filename">>, Filename},
                 {<<"ctype">>, CType},
                 {<<"ctransferEncoding">>, CTransferEncoding},
+                {<<"created">>, ds_util:timestamp()},
                 {<<"md5">>, MD5},
                 {<<"sha">>, SHA},
                 {<<"sha512">>, SHA512}
@@ -170,6 +171,16 @@ multipart(AuthKeyType, AuthKey, Req, FieldList, FileList) ->
 
             %% Commit the document
             {ok, ResultDoc} = couch:save(?couch_file_uploads, Doc),
+            %% Commit the notification document
+            {ok, _} = couch:save(?couch_file_notification, {[
+              {<<"fileKey">>, FileKeyBin},
+              {<<"filename">>, Filename},
+              {<<"created">>, ds_util:timestamp()},
+              {<<"aes_iv">>, base64:encode(AESIV)},
+              {<<"md5">>, MD5},
+              {<<"sha">>, SHA},
+              {<<"sha512">>, SHA512}
+            ]}),
 
             %% Commit the security details, check for race condition
             case couch:get(?couch_file_secrets, FileKey) of
