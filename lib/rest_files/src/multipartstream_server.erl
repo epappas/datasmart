@@ -179,13 +179,19 @@ multipart(AuthKeyType, AuthKey, Req, FieldList, FileList) ->
                 couch:save(?couch_file_secrets,
                   {[{<<"aes_key">>, base64:encode(AESKey)},
                     {<<"aes_iv">>, base64:encode(AESIV)},
-                    {<<"fileKey">>, FileKeyBin}]},
+                    {<<"fileKey">>, FileKeyBin},
+                    {<<"md5">>, MD5},
+                    {<<"sha">>, SHA},
+                    {<<"sha512">>, SHA512}]},
                   [{<<"_id">>, Ref}, {<<"_rev">>, Rev2}]);
               _ ->
                 couch:save(?couch_file_secrets,
                   {[{<<"_id">>, FileKeyBin},
                     {<<"aes_key">>, base64:encode(AESKey)},
                     {<<"aes_iv">>, base64:encode(AESIV)},
+                    {<<"md5">>, MD5},
+                    {<<"sha">>, SHA},
+                    {<<"sha512">>, SHA512},
                     {<<"fileKey">>, FileKeyBin}]})
             end,
 
