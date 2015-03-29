@@ -94,7 +94,7 @@ routing_dispatch() ->
     user, user_srp_begin, user_srp_answer, user_srp_verify,
     user_oukey, user_oukey_srp_begin, user_oukey_srp_answer, user_oukey_srp_verify,
     user_aukey, user_aukey_srp_begin, user_aukey_srp_answer, user_aukey_srp_verify,
-    files, files_key,
+    files, files_key, files_secrets_key,
     atoken
   ],
   cowboy_router:compile([
@@ -166,4 +166,7 @@ route(files) ->
   {"/user/files", files_handler, []};
 
 route(files_key) ->
-  {"/user/files/:filekey", files_handler, []}.
+  {"/user/files/:filekey", files_handler, []};
+
+route(files_secrets_key) ->
+  {"/user/filesecrets/:filekey", files_handler, []}.
