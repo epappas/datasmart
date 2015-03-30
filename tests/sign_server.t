@@ -46,4 +46,10 @@ test_rsa() ->
 
   <<FirstPart:32/binary, _/binary>> = RSAKey,
 
-  etap:is(FirstPart, <<"-----BEGIN RSA PRIVATE KEY-----\n">>, "Header of RSA Private Key").
+  etap:is(FirstPart, <<"-----BEGIN RSA PRIVATE KEY-----\n">>, "Header of RSA Private Key"),
+
+  {pubKey, PubKey} = sign_server:generate_rsa(public, RSAKey),
+
+  <<FP:27/binary, _/binary>> = PubKey,
+
+  etap:is(FP, <<"-----BEGIN PUBLIC KEY-----\n">>, "Header of RSA Private Key").
