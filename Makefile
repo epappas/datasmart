@@ -7,7 +7,7 @@ NODE        ?= datasmart
 HOSTNAME    ?= `uname -n`
 REBAR       ?= "./rebar"
 CONFIG      ?= "datasmart.config"
-RUN         := @$(ERL) -pa lib/*/ebin -pa deps/*/ebin -smp enable -boot start_sasl -config ${CONFIG} ${ERL_ARGS}
+RUN         := $(ERL) -pa lib/*/ebin -pa deps/*/ebin -smp enable -boot start_sasl -config ${CONFIG} ${ERL_ARGS}
 
 EVAL_IGNITION   = -eval ${EVAL};
 START_IGNITION  = -s ${START}
