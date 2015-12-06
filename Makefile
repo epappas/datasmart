@@ -35,4 +35,4 @@ run: quick
 
 test:
 	@$(ERLC) -o tests/ tests/*.erl
-	prove -v tests/*.t
+	prove -v tests/*.t tests/**/*.t

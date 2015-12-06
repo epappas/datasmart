@@ -22,7 +22,7 @@
 
 -define(CACHE_TABLE, srb_session_tb).
 
--define(Default_Atoken_Expiration, 30 * 24 * 60 * 60 * 1000). %% 30days in ms
+-define(Default_Atoken_Expiration, integer_to_list(30 * 24 * 60 * 60 * 1000)). %% 30days in ms
 -define(User_RSA_Bits, 2048).
 -define(User_Prime_Bytes, 256).
 -define(User_Generator, 2).
@@ -60,4 +60,3 @@
 -record(ukey_generate_rsp, {email, ukey}).
 -record(oukey_generate_rsp, {oukey, secret}).
 -record(aukey_generate_rsp, {aukey, asecret}).
-
