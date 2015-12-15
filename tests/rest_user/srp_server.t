@@ -34,7 +34,7 @@ main(_) ->
   etap:plan(unknown),
 
   #ukey_generate_rsp{
-    email = Email, ukey = UKey
+    email = Email %%, ukey = UKey
   } = test_generate(),
 
   Factor= ?Factor,
@@ -79,7 +79,7 @@ test_generate() ->
     ".test@test.domain.com"
   ),
 
-  {ok, #ukey_generate_rsp{ukey = UKey} = UKeyGenerateRSP} =
+  {ok, #ukey_generate_rsp{} = UKeyGenerateRSP} =
     ukey_server:generate(#ukey_generate{
       email = Email, userPrimeBytes = UserPrimeBytes,
       userGenerator = UserGenerator,
