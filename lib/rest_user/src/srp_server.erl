@@ -80,7 +80,7 @@ verifier(Generator, DerivedKey, Prime) -> crypto:mod_pow(Generator, DerivedKey, 
 derived_key(Salt, Username, Password, Factor) ->
   derived_key(Salt, list_to_binary(hashPass(Password, Username, Factor))).
 
-derived_key(Salt, Hashed) -> crypto:hash(sha, [Salt, Hashed]).
+derived_key(Salt, Hashed) -> crypto:hash(sha256, [Salt, Hashed]).
 
 prime(UserPrimeBytes, UserGenerator) -> crypto:dh_generate_parameters(UserPrimeBytes, UserGenerator).
 
@@ -99,7 +99,6 @@ compute_key(server, {clientPub, ClientPub}, SrpSesList) ->
 
 %% [
 %%   {privKey, PrivKey},
-%%   {pubKey, PubKey},
 %%   {pubKey, PubKey},
 %%   {derivedKey, DerivedKey},
 %%   {prime, Prime},
@@ -162,7 +161,7 @@ handle_call({compute_key, {server, {clientPub, ClientPub}}, SrpSesList}, _From, 
   Version = proplists:get_value(<<"version">>, SrpSesList),
   Verifier = proplists:get_value(<<"verifier">>, SrpSesList),
 
-  SKey = crypto:compute_key(srp, ClientPub, {PubKey, PrivKey}, {host, [Verifier, Prime, Generator, Version]}),
+  SKey = crypto:compute_key(srp, ClientPub, {PubKey, PrivKey}, {host, [Verifier, Prime, Version]}),
 
   {reply, {ok, SKey}, State};
 
