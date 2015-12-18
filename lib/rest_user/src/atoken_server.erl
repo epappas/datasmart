@@ -93,7 +93,7 @@ handle_call({generate, #atoken_generate{aukey = AUKey, scope = Scope, expires = 
 
   couch:save(?couch_atokens, {[
     {<<"_id">>, list_to_binary(AToken)},
-    {<<"key">>, list_to_binary(AUKey)},
+    {<<"key">>, AUKey},
     {<<"salt">>, list_to_binary(Salt)},
     {<<"expires">>, list_to_binary(Expires)},
     {<<"scope">>, Scope}
@@ -115,19 +115,19 @@ handle_call({check, AToken}, _From, State) ->
       ExpiresBin = proplists:get_value(<<"expires">>, DocKVList, <<"0">>),
       Expires = binary_to_integer(ExpiresBin),
 
-      Condition = ds_util:timestamp() > Expires
+      Condition = ds_util:timestamp() < Expires
         andalso
         %% Check if AUKey still exists
         checkKey(AUKey),
 
       case Condition of
-        true ->
+        false ->
           %% TODO drop the doc
           {reply, {error, "Invalid Token"}, State};
-        false ->
+        true ->
           {reply, {ok, [
             {aukey, AUKey},
-            {opensalt, list_to_binary(Salt)},
+            {opensalt, Salt},
             {scope, Scope},
             {expires, Expires}
           ]}, State}

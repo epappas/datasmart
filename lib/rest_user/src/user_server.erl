@@ -202,7 +202,7 @@ handle_call({generate, {aukey, Params}}, _From, State) ->
 handle_call({generate, {atoken, Params}}, _From, State) ->
   AUKey = proplists:get_value(aukey, Params),
   Scope = proplists:get_value(scope, Params, []),
-  Expires = proplists:get_value(expires, Params, ?Default_Atoken_Expiration),
+  Expires = proplists:get_value(expires, Params, integer_to_list(list_to_integer(?Default_Atoken_Expiration, 10) + ds_util:timestamp())),
 
   case atoken_server:generate(#atoken_generate{aukey = AUKey, scope = Scope, expires = Expires}) of
     {ok, ResultKVList} -> {reply, {ok, ResultKVList}, State};
